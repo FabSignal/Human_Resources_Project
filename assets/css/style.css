@@ -1499,3 +1499,59 @@ button:disabled {
 button:disabled:hover::before {
   opacity: 0;
 }
+
+/* Menú de usuario */
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-icon {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  color: var(--accent-lavender);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.user-icon:hover {
+  transform: scale(1.1);
+  color: var(--accent-lilac);
+}
+
+.user-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-radius: var(--element-radius);
+  box-shadow: var(--shadow-soft);
+  padding: 1rem;
+  min-width: 150px;
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  animation: fadeIn 0.3s ease;
+}
+
+#logout-btn {
+  background: var(--accent-lavender);
+  color: white;
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  border-radius: var(--element-radius);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+#logout-btn:hover {
+  background: var(--accent-lilac);
+}

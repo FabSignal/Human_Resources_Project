@@ -1,6 +1,10 @@
 // ======================= CONFIGURACIÓN API =======================
 const API_BASE_URL = "https://menstrual-cycle-tracking-api.onrender.com";
 
+/* ======================= DECLARACIONES GLOBALES ====================== */
+let ciclosPrecargados = false; // <-- MOVIDO AL INICIO DEL ARCHIVO
+let ciclos = [];
+
 /* ======================= AUTENTICACIÓN ====================== */
 
 // Elementos del DOM
@@ -28,12 +32,8 @@ function showError(form, message) {
 }
 
 // Verificar estado de autenticación
-const userId = localStorage.getItem("userId");
-const userName = localStorage.getItem("userName");
-
-// Función para mostrar estado autenticado
 function showAuthenticatedState() {
-  // Leer siempre desde localStorage
+  // Leer SIEMPRE desde localStorage
   const storedUserName = localStorage.getItem("userName");
 
   authModal.classList.remove("active");
@@ -41,7 +41,10 @@ function showAuthenticatedState() {
 
   // Usar el nombre almacenado
   userNameSpan.textContent = storedUserName;
-  greetingText.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola ${
+
+  // Actualizar el saludo en el header
+  const titulo = document.querySelector("header h1");
+  titulo.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola ${
     storedUserName || "usuaria"
   }! ¿Cómo te sentís hoy?`;
 }
@@ -66,6 +69,64 @@ if (userId && userName) {
 if (userId && !ciclosPrecargados) {
   localStorage.removeItem("ciclos");
   ciclos = [];
+}
+
+// ======================= MENÚ DE USUARIO =======================
+
+// Elementos del menú de usuario
+const userMenu = document.querySelector(".user-menu");
+const userIcon = document.querySelector(".user-icon");
+const userDropdown = document.querySelector(".user-dropdown");
+const logoutBtn = document.getElementById("logout-btn");
+
+// Solo si existen estos elementos
+if (userIcon && userDropdown && logoutBtn) {
+  // Mostrar/ocultar menú
+  userIcon.addEventListener("click", (e) => {
+    e.stopPropagation();
+    userDropdown.hidden = !userDropdown.hidden;
+  });
+
+  // Cerrar sesión
+  logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("userId");
+    localStorage.removeItem("userName");
+    userDropdown.hidden = true;
+    showUnauthenticatedState();
+  });
+
+  // Ocultar menú al hacer clic fuera
+  document.addEventListener("click", (e) => {
+    if (!userMenu.contains(e.target)) {
+      userDropdown.hidden = true;
+    }
+  });
+
+  // Actualizar visibilidad del menú en estados de autenticación
+  function updateAuthStateUI() {
+    if (localStorage.getItem("userId")) {
+      userMenu.style.display = "block";
+      userDropdown.hidden = true;
+    } else {
+      userMenu.style.display = "none";
+    }
+  }
+
+  // Actualizar UI al cambiar estados
+  const originalShowAuth = showAuthenticatedState;
+  showAuthenticatedState = function () {
+    originalShowAuth();
+    updateAuthStateUI();
+  };
+
+  const originalShowUnauth = showUnauthenticatedState;
+  showUnauthenticatedState = function () {
+    originalShowUnauth();
+    updateAuthStateUI();
+  };
+
+  // Inicializar UI
+  updateAuthStateUI();
 }
 
 // Manejar tabs
@@ -249,9 +310,6 @@ function showSuccessNotification(message) {
 
 /* ============ Ciclos: leer de localStorage o cargar ejemplo ============ */
 
-let ciclos = [];
-let ciclosPrecargados = false;
-
 // Verificar si hay ciclos guardados en localStorage
 const ciclosGuardados = localStorage.getItem("ciclos");
 
@@ -289,6 +347,20 @@ document.addEventListener("DOMContentLoaded", function () {
   const indicatorDots = document.querySelectorAll(".indicator-dot"); // Puntos para pasar de tarjeta
   const cycleList = document.getElementById("lista-ciclos"); // Lista donde se muestran los ciclos
   const emptyState = document.querySelector(".empty-state"); // Tarjeta que indica que no se han ingresado ciclos ( de estado vacío)
+
+  // Función para mostrar errores
+  function showError(form, message) {
+    // Eliminar errores anteriores en este formulario
+    const existingError = form.querySelector(".error-message");
+    if (existingError) existingError.remove();
+
+    const errorElement = document.createElement("div");
+    errorElement.className = "error-message";
+    errorElement.textContent = message;
+
+    // Insertar después del último elemento del formulario
+    form.appendChild(errorElement);
+  }
 
   // Se cargan los ciclos existentes al iniciar la página
   mostrarCiclos();

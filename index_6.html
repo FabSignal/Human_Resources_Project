@@ -13,6 +13,21 @@
     <p class="subtitle">Cuidarte empieza por conocerte. ¡Registrá tu ciclo!</p>
   </header>
 
+  <header>
+    <div class="header-content">
+      <div>
+    <h1><span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola 'nombre'!¿Cómo te sentís hoy?</h1>
+    <p class="subtitle">Cuidarte empieza por conocerte. ¡Registrá tu ciclo!</p>
+    </div>
+    <div class="user-menu" style="display: none;">
+      <button class="user-icon"><i class="fas fa-user-circle"></i></button>
+      <div class="user-dropdown" hidden>
+        <button id="logout-btn">Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+</header>
+
   <!-- Modal de autenticación -->
 <div id="auth-modal" class="modal" hidden>
   <div class="modal-content">
@@ -52,11 +67,6 @@
     </form>
   </div>
 </div>
-
-<!-- Saludo personalizado -->
-<div id="greeting" hidden>
-  <p>¡Hola, <span id="userName"></span>! <button id="logout-btn">Cerrar sesión</button></p>
-</div>    
 
   
 
