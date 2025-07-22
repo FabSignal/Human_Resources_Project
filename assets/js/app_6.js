@@ -15,7 +15,6 @@ const userName = localStorage.getItem("userName");
 const authModal = document.getElementById("auth-modal");
 const registerForm = document.getElementById("register-form");
 const loginForm = document.getElementById("login-form");
-//const greetingDiv = document.getElementById("greeting");
 const userNameSpan = document.getElementById("userName");
 const greetingText = document.querySelector("header h1");
 //const logoutBtn = document.getElementById("logout-btn");
@@ -37,19 +36,16 @@ function showError(form, message) {
 
 // Verificar estado de autenticación
 function showAuthenticatedState() {
-  // Leer SIEMPRE desde localStorage
-  const storedUserName = localStorage.getItem("userName");
-
   authModal.classList.remove("active");
+  // Leer SIEMPRE desde localStorage
+  const storedUserName = localStorage.getItem("userName") || "usuaria";
 
   // Usar el nombre almacenado
   userNameSpan.textContent = storedUserName;
 
   // Actualizar el saludo en el header
   const titulo = document.querySelector("header h1");
-  titulo.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola ${
-    storedUserName || "usuaria"
-  }! ¿Cómo te sentís hoy?`;
+  titulo.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola ${storedUserName}! ¿Cómo te sentís hoy?`;
 }
 
 // Función para mostrar estado no autenticado
@@ -165,6 +161,8 @@ registerForm.addEventListener("submit", async (e) => {
     // Manejar respuesta según el tipo de contenido
     if (response.headers.get("content-type")?.includes("application/json")) {
       data = await response.json();
+      console.log("Registro payload →", data);
+      console.log("auth response payload:", data);
     } else {
       const text = await response.text();
       throw new Error(text || "Respuesta inesperada del servidor");
@@ -173,7 +171,7 @@ registerForm.addEventListener("submit", async (e) => {
     if (response.ok) {
       // Guardar en localStorage
       localStorage.setItem("userId", data.userId);
-      localStorage.setItem("userName", data.userName);
+      localStorage.setItem("userName", data.name);
 
       // Eliminar ciclos de ejemplo
       localStorage.removeItem("ciclos");
@@ -235,6 +233,7 @@ loginForm.addEventListener("submit", async (e) => {
     // Manejar respuesta según el tipo de contenido
     if (response.headers.get("content-type")?.includes("application/json")) {
       data = await response.json();
+      console.log("Registro payload →", data);
     } else {
       const text = await response.text();
       throw new Error(text || "Respuesta inesperada del servidor");
@@ -243,7 +242,7 @@ loginForm.addEventListener("submit", async (e) => {
     if (response.ok) {
       // Guardar en localStorage
       localStorage.setItem("userId", data.userId);
-      localStorage.setItem("userName", data.userName);
+      localStorage.setItem("userName", data.name);
       showAuthenticatedState();
       showSuccessNotification("¡Bienvenida de nuevo!");
     } else {
