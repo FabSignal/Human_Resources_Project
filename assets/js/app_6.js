@@ -15,7 +15,7 @@ const userName = localStorage.getItem("userName");
 const authModal = document.getElementById("auth-modal");
 const registerForm = document.getElementById("register-form");
 const loginForm = document.getElementById("login-form");
-const greetingDiv = document.getElementById("greeting");
+//const greetingDiv = document.getElementById("greeting");
 const userNameSpan = document.getElementById("userName");
 const greetingText = document.querySelector("header h1");
 //const logoutBtn = document.getElementById("logout-btn");
@@ -41,7 +41,6 @@ function showAuthenticatedState() {
   const storedUserName = localStorage.getItem("userName");
 
   authModal.classList.remove("active");
-  greetingDiv.hidden = false;
 
   // Usar el nombre almacenado
   userNameSpan.textContent = storedUserName;
@@ -56,7 +55,6 @@ function showAuthenticatedState() {
 // Función para mostrar estado no autenticado
 function showUnauthenticatedState() {
   authModal.classList.add("active");
-  greetingDiv.hidden = true;
   greetingText.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola! ¿Cómo te sentís hoy?`;
 }
 
