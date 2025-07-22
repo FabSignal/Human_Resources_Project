@@ -14,7 +14,7 @@ const loginForm = document.getElementById("login-form");
 const greetingDiv = document.getElementById("greeting");
 const userNameSpan = document.getElementById("userName");
 const greetingText = document.querySelector("header h1");
-const logoutBtn = document.getElementById("logout-btn");
+//const logoutBtn = document.getElementById("logout-btn");
 const tabButtons = document.querySelectorAll(".tab-btn");
 
 // Función para mostrar errores
@@ -54,21 +54,6 @@ function showUnauthenticatedState() {
   authModal.classList.add("active");
   greetingDiv.hidden = true;
   greetingText.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola! ¿Cómo te sentís hoy?`;
-}
-
-// Al cargar la página
-if (userId && userName) {
-  showAuthenticatedState();
-} else {
-  showUnauthenticatedState();
-  // Eliminar nombre anterior si existe
-  localStorage.removeItem("nombre");
-}
-
-// Verificar si debemos limpiar los ciclos de ejemplo
-if (userId && !ciclosPrecargados) {
-  localStorage.removeItem("ciclos");
-  ciclos = [];
 }
 
 // ======================= MENÚ DE USUARIO =======================
@@ -127,6 +112,21 @@ if (userIcon && userDropdown && logoutBtn) {
 
   // Inicializar UI
   updateAuthStateUI();
+}
+
+// Al cargar la página
+if (userId && userName) {
+  showAuthenticatedState();
+} else {
+  showUnauthenticatedState();
+  // Eliminar nombre anterior si existe
+  localStorage.removeItem("nombre");
+}
+
+// Verificar si debemos limpiar los ciclos de ejemplo
+if (userId && !ciclosPrecargados) {
+  localStorage.removeItem("ciclos");
+  ciclos = [];
 }
 
 // Manejar tabs
