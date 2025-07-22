@@ -1507,10 +1507,6 @@ button:disabled:hover::before {
   align-items: center;
 }
 
-.user-menu {
-  position: relative;
-}
-
 .user-icon {
   background: none;
   border: none;
@@ -1554,4 +1550,11 @@ button:disabled:hover::before {
 
 #logout-btn:hover {
   background: var(--accent-lilac);
+}
+
+.user-menu {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
 }

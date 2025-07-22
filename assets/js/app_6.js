@@ -2,8 +2,12 @@
 const API_BASE_URL = "https://menstrual-cycle-tracking-api.onrender.com";
 
 /* ======================= DECLARACIONES GLOBALES ====================== */
-let ciclosPrecargados = false; // <-- MOVIDO AL INICIO DEL ARCHIVO
+let ciclosPrecargados = false;
 let ciclos = [];
+
+// ESTADO DE AUTENTICACIÓN
+const userId = localStorage.getItem("userId");
+const userName = localStorage.getItem("userName");
 
 /* ======================= AUTENTICACIÓN ====================== */
 
@@ -59,7 +63,7 @@ function showUnauthenticatedState() {
 // ======================= MENÚ DE USUARIO =======================
 
 // Elementos del menú de usuario
-const userMenu = document.querySelector(".user-menu");
+/* const userMenu = document.querySelector(".user-menu");
 const userIcon = document.querySelector(".user-icon");
 const userDropdown = document.querySelector(".user-dropdown");
 const logoutBtn = document.getElementById("logout-btn");
@@ -112,16 +116,7 @@ if (userIcon && userDropdown && logoutBtn) {
 
   // Inicializar UI
   updateAuthStateUI();
-}
-
-// Al cargar la página
-if (userId && userName) {
-  showAuthenticatedState();
-} else {
-  showUnauthenticatedState();
-  // Eliminar nombre anterior si existe
-  localStorage.removeItem("nombre");
-}
+} */
 
 // Verificar si debemos limpiar los ciclos de ejemplo
 if (userId && !ciclosPrecargados) {
@@ -347,6 +342,70 @@ document.addEventListener("DOMContentLoaded", function () {
   const indicatorDots = document.querySelectorAll(".indicator-dot"); // Puntos para pasar de tarjeta
   const cycleList = document.getElementById("lista-ciclos"); // Lista donde se muestran los ciclos
   const emptyState = document.querySelector(".empty-state"); // Tarjeta que indica que no se han ingresado ciclos ( de estado vacío)
+
+  // —— MENÚ DE USUARIO (TODO este bloque) ——
+  const userMenu = document.querySelector(".user-menu");
+  const userIcon = document.querySelector(".user-icon");
+  const userDropdown = document.querySelector(".user-dropdown");
+  const logoutBtn = document.getElementById("logout-btn");
+
+  if (userIcon && userDropdown && logoutBtn) {
+    // Mostrar/ocultar menú
+    userIcon.addEventListener("click", (e) => {
+      e.stopPropagation();
+      userDropdown.hidden = !userDropdown.hidden;
+    });
+
+    // Cerrar sesión
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("userId");
+      localStorage.removeItem("userName");
+      userDropdown.hidden = true;
+      showUnauthenticatedState();
+    });
+
+    // Ocultar menú al hacer clic fuera
+    document.addEventListener("click", (e) => {
+      if (!userMenu.contains(e.target)) {
+        userDropdown.hidden = true;
+      }
+    });
+
+    // Función para actualizar visibilidad del menú
+    function updateAuthStateUI() {
+      if (localStorage.getItem("userId")) {
+        userMenu.style.display = "block";
+        userDropdown.hidden = true;
+      } else {
+        userMenu.style.display = "none";
+      }
+    }
+
+    // Ensamblamos updateAuthStateUI dentro de los estados
+    const origShowAuth = showAuthenticatedState;
+    showAuthenticatedState = () => {
+      origShowAuth();
+      updateAuthStateUI();
+    };
+
+    const origShowUnauth = showUnauthenticatedState;
+    showUnauthenticatedState = () => {
+      origShowUnauth();
+      updateAuthStateUI();
+    };
+
+    // Mostrar/Ocultar al cargar
+    updateAuthStateUI();
+  }
+
+  // Al cargar la página
+  if (userId && userName) {
+    showAuthenticatedState();
+  } else {
+    showUnauthenticatedState();
+    // Eliminar nombre anterior si existe
+    localStorage.removeItem("nombre");
+  }
 
   // Función para mostrar errores
   function showError(form, message) {
