@@ -579,92 +579,6 @@ function showPredictions(data) {
   }
 }
 
-/* cont.innerHTML = `
-    <h2>Predicciones</h2>
-    
-    <div class="prediction-block">
-      <h3>Próximo Período</h3>
-      <p><strong>Fecha:</strong> ${proximoPeriodo.fecha}</p>
-      <p><strong>Días restantes:</strong> ${proximoPeriodo.diasRestantes}</p>
-      <p>${proximoPeriodo.mensaje}</p>
-    </div>
-    
-    <div class="prediction-block">
-      <h3>Ovulación</h3>
-      <p><strong>Estado:</strong> ${ovulacion.estado}</p>
-      <p><strong>Fecha:</strong> ${ovulacion.fechaAmigable} (${
-    ovulacion.fecha
-  })</p>
-      <p><strong>Ventana fértil:</strong> ${
-        ovulacion.ventanaFertil ? "Sí" : "No"
-      }</p>
-      <p>${ovulacion.mensaje}</p>
-    </div>
-    
-    <div class="prediction-block">
-      <h3>Fertilidad</h3>
-      <p><strong>Probabilidad:</strong> ${fertilidad.probabilidad}</p>
-      <p><strong>Nivel:</strong> ${fertilidad.nivel}</p>
-      <p>${fertilidad.mensaje}</p>
-    </div>
-    
-    <div class="prediction-block">
-      <h3>Fase Actual</h3>
-      <p>${faseActual.nombre} (Día ${faseActual.diaDelCiclo} de ${
-    faseActual.duracionCiclo
-  })</p>
-    </div>
-    
-    <div class="prediction-block">
-      <h3>Estadísticas de Ciclo</h3>
-      <ul>
-        <li>Duración promedio: ${estadisticas.ciclo.duracionPromedio} días</li>
-        <li>Variabilidad: ${estadisticas.ciclo.variabilidad} días</li>
-        <li>Regularidad: ${estadisticas.ciclo.regularidad}</li>
-        <li>Último período: ${estadisticas.ciclo.ultimoPeriodo}</li>
-        <li>Siguiente predicción: ${estadisticas.ciclo.siguientePrediccion}</li>
-      </ul>
-    </div>
-    
-    <div class="prediction-block">
-      <h3>Estadísticas de Menstruación</h3>
-      <ul>
-        <li>Duración promedio: ${
-          estadisticas.menstruacion.duracionPromedio
-        } días</li>
-        <li>Última duración: ${
-          estadisticas.menstruacion.ultimaDuracion
-        } días</li>
-      </ul>
-    </div>
-    
-    <div class="prediction-block">
-      <h3>Precisión</h3>
-      <ul>
-        <li>Ciclos analizados: ${estadisticas.precision.ciclosAnalizados}</li>
-        <li>Confiabilidad: ${estadisticas.precision.confiabilidad}</li>
-        <li>Intervalos calculados: ${
-          estadisticas.precision.intervalosCalculados
-        }</li>
-      </ul>
-    </div>
-    
-    <div class="prediction-block">
-      <h3>Insights</h3>
-      <p>${insights.mensaje}</p>
-      <p><strong>Consejo:</strong> ${insights.consejo}</p>
-      <p><strong>Síntomas físicos:</strong> ${insights.sintomas.fisicos.join(
-        ", "
-      )}</p>
-      <p><strong>Síntomas emocionales:</strong> ${insights.sintomas.emocionales.join(
-        ", "
-      )}</p>
-      <p><strong>Recomendaciones:</strong> ${insights.sintomas.consejos.join(
-        ", "
-      )}</p>
-    </div>
-  `;
-} */
 /* =========================== DOM  ============================ */
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -819,6 +733,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (ciclosPrecargados) {
       ciclos = []; // Se eliminan todos los ciclos actuales (los de ejemplo)
       ciclosPrecargados = false; // Evita que esto vuelva a ejecutarse
+      localStorage.removeItem("ciclos");
     }
 
     // Se crea un nuevo objeto con los nuevos datos ingresados del ciclo
