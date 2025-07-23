@@ -295,10 +295,10 @@ async function syncPendingCycles() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId: userId, // tal cual guardaste en LS
-            startDate: ciclo.fecha, // renombrado para la API
-            duration: ciclo.duracion, // coincide con tu esquema
-            symptoms: ciclo.sintomas, // en inglés
+            userId: userId,
+            startDate: ciclo.fecha,
+            duration: ciclo.duracion,
+            symptoms: ciclo.sintomas,
           }),
         });
 
@@ -348,7 +348,14 @@ async function fetchPredictions() {
     );
   // Más sencillo: contar los ciclos reales subidos
   const realesCount = ciclos.filter((c) => c.synced === true).length;
-  if (realesCount < 2) return;
+
+  if (realesCount < 2) {
+    const cont = document.getElementById("predictions-container");
+    if (cont) {
+      cont.innerHTML = `<div class="notice-msg">Necesitás al menos dos ciclos registrados para obtener predicciones.</div>`;
+    }
+    return;
+  }
 
   try {
     const res = await fetch(
@@ -366,7 +373,7 @@ async function fetchPredictions() {
 
 /*======================== RenderizaR la respuesta de predicciones dentro de #predictions ===========*/
 function showPredictions(data) {
-  const cont = document.getElementById("predictions");
+  const cont = document.getElementById("predictions-container");
   if (!cont) return;
 
   // Extraemos cada bloque de la respuesta
@@ -634,12 +641,6 @@ document.addEventListener("DOMContentLoaded", function () {
     ciclos.push(nuevoCiclo);
 
     localStorage.setItem("ciclos", JSON.stringify(ciclos));
-
-    // Se actualiza la lista de ciclos en pantalla
-    /* mostrarCiclos();
-
-    ciclos.push(nuevoCiclo);
-    localStorage.setItem("ciclos", JSON.stringify(ciclos)); */
 
     // Intentar sincronizar inmediatamente los ciclos pendientes
     syncPendingCycles();
