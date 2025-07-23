@@ -1,481 +1,789 @@
 // ======================= CONFIGURACIÓN API =======================
-const API_BASE_URL =
-  window.location.hostname === "localhost"
-    ? "http://localhost:5000"
-    : "https://menstrual-cycle-tracking-api.onrender.com";
-let isOnline = true;
-let userId = localStorage.getItem("userId");
-let userName = localStorage.getItem("userName");
+const API_BASE_URL = "https://menstrual-cycle-tracking-api.onrender.com";
 
-// Función para manejar peticiones fetch
-async function safeFetch(url, options = {}) {
+/* ======================= DECLARACIONES GLOBALES ====================== */
+//let ciclosPrecargados = false;
+let ciclos = [];
+
+// ESTADO DE AUTENTICACIÓN
+const userId = localStorage.getItem("userId");
+const userName = localStorage.getItem("userName");
+
+// Ejemplos para cuando NO hay ciclos cargados aún
+const exampleCycles = [
+  {
+    id: 1,
+    fecha: "2025-01-01",
+    duracion: 5,
+    sintomas: "Dolor abdominal, Hinchazón, Fatiga",
+    synced: true,
+    isExample: true,
+  },
+  {
+    id: 2,
+    fecha: "2025-01-28",
+    duracion: 6,
+    sintomas: "Dolor de cabeza, Cólicos, Dolor de espalda",
+    synced: true,
+    isExample: true,
+  },
+];
+
+/* ======================= AUTENTICACIÓN ====================== */
+
+// Elementos del DOM
+const authModal = document.getElementById("auth-modal");
+const registerForm = document.getElementById("register-form");
+const loginForm = document.getElementById("login-form");
+const userNameSpan = document.getElementById("userName");
+const greetingText = document.querySelector("header h1");
+//const logoutBtn = document.getElementById("logout-btn");
+const tabButtons = document.querySelectorAll(".tab-btn");
+
+// Función para mostrar errores
+function showError(form, message) {
+  // Eliminar errores anteriores en este formulario
+  const existingError = form.querySelector(".error-message");
+  if (existingError) existingError.remove();
+
+  const errorElement = document.createElement("div");
+  errorElement.className = "error-message";
+  errorElement.textContent = message;
+
+  // Insertar después del último elemento del formulario
+  form.appendChild(errorElement);
+}
+
+// Verificar estado de autenticación
+function showAuthenticatedState() {
+  authModal.classList.remove("active");
+  // Leer SIEMPRE desde localStorage
+  const storedUserName = localStorage.getItem("userName") || "usuaria";
+
+  // Usar el nombre almacenado
+  userNameSpan.textContent = storedUserName;
+
+  // Actualizar el saludo en el header
+  const titulo = document.querySelector("header h1");
+  titulo.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola ${storedUserName}! ¿Cómo te sentís hoy?`;
+}
+
+// Función para mostrar estado no autenticado
+function showUnauthenticatedState() {
+  authModal.classList.add("active");
+  greetingText.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola! ¿Cómo te sentís hoy?`;
+}
+
+// ======================= MENÚ DE USUARIa =======================
+
+// Verificar si debemos limpiar los ciclos de ejemplo
+/* if (userId && !ciclosPrecargados) {
+  localStorage.removeItem("ciclos");
+  ciclos = [];
+} */
+
+// Manejar tabs
+tabButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    // Actualizar botones activos
+    tabButtons.forEach((btn) => btn.classList.remove("active"));
+    button.classList.add("active");
+
+    // Mostrar formulario correspondiente
+    const tab = button.getAttribute("data-tab");
+    document.querySelectorAll(".auth-form").forEach((form) => {
+      form.classList.remove("active");
+    });
+    document.getElementById(`${tab}-form`).classList.add("active");
+  });
+});
+
+// Manejar registro
+registerForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const name = document.getElementById("register-name").value;
+  const email = document.getElementById("register-email").value;
+  const password = document.getElementById("register-password").value;
+
+  // Mostrar indicador de carga
+  const submitBtn = registerForm.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn.textContent;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
+  submitBtn.disabled = true;
+
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, email, password }),
+    });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        `Error ${response.status}: ${errorData.message || response.statusText}`
-      );
+    let data;
+    // Manejar respuesta según el tipo de contenido
+    if (response.headers.get("content-type")?.includes("application/json")) {
+      data = await response.json();
+      console.log("Registro payload →", data);
+      console.log("auth response payload:", data);
+    } else {
+      const text = await response.text();
+      throw new Error(text || "Respuesta inesperada del servidor");
     }
 
-    return await response.json();
+    if (response.ok) {
+      // Guardar en localStorage
+      localStorage.setItem("userId", data.userId);
+      localStorage.setItem("userName", data.name);
+
+      // Eliminar ciclos de ejemplo
+      localStorage.removeItem("ciclos");
+      ciclosPrecargados = false;
+
+      // Ocultar modal y mostrar estado autenticado
+      authModal.classList.remove("active");
+      showAuthenticatedState();
+
+      syncPendingCycles();
+
+      // Eliminar ejemplos y cargar cilos reales
+      fetchUserCycles();
+
+      // Mostrar notificación de éxito
+      showSuccessNotification("¡Registro exitoso! ¡Bienvenida!");
+    } else {
+      // Mostrar error
+      if (response.status === 409) {
+        showError(
+          registerForm,
+          data.message || "Este correo ya está registrado"
+        );
+      } else {
+        showError(
+          registerForm,
+          data.message || `Error ${response.status}: ${response.statusText}`
+        );
+      }
+    }
   } catch (error) {
-    console.error(`Fetch error: ${error.message}`);
-    throw error;
+    console.error("Error:", error);
+    showError(registerForm, error.message || "Error en la conexión");
+  } finally {
+    // Restaurar botón
+    submitBtn.textContent = originalBtnText;
+    submitBtn.disabled = false;
   }
-}
+});
 
-// ======================= AUTENTICACIÓN =======================
-async function ensureUser() {
-  // Si ya tenemos credenciales en localStorage, devolvemos
-  let storedId = localStorage.getItem("userId");
-  let storedName = localStorage.getItem("userName");
+// Manejar login
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-  if (storedId && storedName) {
-    // Actualizar saludo inmediatamente si ya existe
-    document.querySelector("header h1").innerHTML = `
-      <span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span>
-      ¡Hola ${storedName}! ¿Cómo te sentís hoy?
-    `;
-    return { userId: storedId, userName: storedName };
-  }
+  const email = document.getElementById("login-email").value;
+  const password = document.getElementById("login-password").value;
 
-  // Crear elementos de autenticación si no existen
-  createAuthContainerIfMissing();
+  // Mostrar indicador de carga
+  const submitBtn = loginForm.querySelector('button[type="submit"]');
+  const originalBtnText = submitBtn.textContent;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ingresando...';
+  submitBtn.disabled = true;
 
-  // Mostrar formulario de autenticación
-  const authContainer = document.getElementById("auth-container");
-  authContainer.style.display = "block";
-
-  return new Promise((resolve) => {
-    const emailIn = document.getElementById("auth-email");
-    const passIn = document.getElementById("auth-password");
-    const regBtn = document.getElementById("auth-register");
-    const loginBtn = document.getElementById("auth-login");
-
-    const handleAuthSuccess = (res) => {
-      localStorage.setItem("userId", res.userId);
-      localStorage.setItem("userName", res.name);
-      authContainer.style.display = "none";
-
-      // Actualizar saludo
-      document.querySelector("header h1").innerHTML = `
-        <span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span>
-        ¡Hola ${res.name}! ¿Cómo te sentís hoy?
-      `;
-
-      resolve({ userId: res.userId, userName: res.name });
-    };
-
-    // Registro
-    regBtn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      try {
-        const userName = prompt("Por favor ingresa tu nombre") || "Usuario";
-        const res = await safeFetch(`${API_BASE_URL}/api/auth/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: userName,
-            email: emailIn.value,
-            password: passIn.value,
-          }),
-        });
-        handleAuthSuccess(res);
-      } catch (err) {
-        alert(err.message);
-      }
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
     });
 
-    // Login
-    loginBtn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      try {
-        const res = await safeFetch(`${API_BASE_URL}/api/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: emailIn.value,
-            password: passIn.value,
-          }),
-        });
-        handleAuthSuccess(res);
-      } catch (err) {
-        alert(err.message);
-      }
-    });
-  });
-}
+    let data;
+    // Manejar respuesta según el tipo de contenido
+    if (response.headers.get("content-type")?.includes("application/json")) {
+      data = await response.json();
+      console.log("Registro payload →", data);
+    } else {
+      const text = await response.text();
+      throw new Error(text || "Respuesta inesperada del servidor");
+    }
 
-function createAuthContainerIfMissing() {
-  if (!document.getElementById("auth-container")) {
-    const authContainer = document.createElement("div");
-    authContainer.id = "auth-container";
-    authContainer.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      z-index: 1000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    `;
-
-    authContainer.innerHTML = `
-      <div style="
-        background: white;
-        padding: 2rem;
-        border-radius: 1.5rem;
-        max-width: 400px;
-        width: 90%;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      ">
-        <h2 style="text-align: center; color: #7c5295; margin-bottom: 1.5rem;">Autenticación</h2>
-        <form id="auth-form">
-          <div class="form-group" style="margin-bottom: 1.2rem;">
-            <label for="auth-email" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email</label>
-            <input 
-              type="email" 
-              id="auth-email" 
-              required 
-              style="
-                width: 100%;
-                padding: 0.8rem;
-                border: 1px solid #d6baaa;
-                border-radius: 0.8rem;
-                font-size: 1rem;
-              "
-            >
-          </div>
-          <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label for="auth-password" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Contraseña</label>
-            <input 
-              type="password" 
-              id="auth-password" 
-              required 
-              style="
-                width: 100%;
-                padding: 0.8rem;
-                border: 1px solid #d6baaa;
-                border-radius: 0.8rem;
-                font-size: 1rem;
-              "
-            >
-          </div>
-          <div class="btn-container" style="display: flex; gap: 1rem;">
-            <button 
-              type="button" 
-              id="auth-register" 
-              style="
-                flex: 1;
-                background: #ffb1ee;
-                color: #333;
-                border: none;
-                padding: 0.8rem;
-                border-radius: 0.8rem;
-                font-weight: 600;
-                cursor: pointer;
-              "
-            >
-              Registrarse
-            </button>
-            <button 
-              type="button" 
-              id="auth-login" 
-              style="
-                flex: 1;
-                background: #8f9aff;
-                color: white;
-                border: none;
-                padding: 0.8rem;
-                border-radius: 0.8rem;
-                font-weight: 600;
-                cursor: pointer;
-              "
-            >
-              Iniciar sesión
-            </button>
-          </div>
-        </form>
-      </div>
-    `;
-
-    document.body.prepend(authContainer);
+    if (response.ok) {
+      // Guardar en localStorage
+      localStorage.setItem("userId", data.userId);
+      localStorage.setItem("userName", data.name);
+      showAuthenticatedState();
+      syncPendingCycles();
+      showSuccessNotification("¡Bienvenida de nuevo!");
+    } else {
+      // Mostrar error
+      const errorMsg =
+        data.message || `Error ${response.status}: ${response.statusText}`;
+      showError(loginForm, errorMsg);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    showError(loginForm, error.message || "Error en la conexión");
+  } finally {
+    // Restaurar botón
+    submitBtn.textContent = originalBtnText;
+    submitBtn.disabled = false;
   }
+});
+
+// ============= Función para mostrar notificación de éxito
+function showSuccessNotification(message) {
+  const successMsg = document.createElement("div");
+  successMsg.style.cssText = `
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    background: var(--accent-mint);
+    color: var(--dark-brown);
+    padding: 1.2rem 2rem;
+    border-radius: var(--element-radius);
+    box-shadow: var(--shadow-hover);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+    animation: slideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), fadeOut 0.6s ease 3s forwards;
+    border-radius: var(--card-radius);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+  `;
+
+  successMsg.innerHTML = `
+    <i class="fas fa-check-circle" style="color: var(--accent-lavender); font-size: 1.6rem;"></i>
+    <div>${message}</div>
+  `;
+
+  document.body.appendChild(successMsg);
+
+  // Se remueve animación después de 3.6 segundos
+  setTimeout(() => {
+    if (successMsg.parentNode === document.body) {
+      document.body.removeChild(successMsg);
+    }
+  }, 3600);
 }
 
 /* ============ Ciclos: leer de localStorage o cargar ejemplo ============ */
-let ciclos = [];
-let ciclosPrecargados = false;
 
-// Función para sincronizar con la API y cargar ciclos
-async function cargarCiclos() {
-  const ciclosGuardados = localStorage.getItem("ciclos");
-
-  // 1. Intentar cargar desde localStorage
-  if (ciclosGuardados) {
-    ciclos = JSON.parse(ciclosGuardados);
-    ciclosPrecargados = false;
-    return;
-  }
-
-  // 2. Si no hay en localStorage, intentar cargar desde API
-  try {
-    // VERIFICAR QUE userId ESTÉ DEFINIDO
-    if (!userId) {
-      console.log("userId no definido, no se pueden cargar ciclos");
-      return;
-    }
-
-    const apiCycles = await safeFetch(`${API_BASE_URL}/api/cycles/${userId}`);
-
-    if (apiCycles.length > 0) {
-      ciclos = apiCycles.map((c) => ({
-        id: c._id,
-        fecha: c.startDate,
-        duracion: c.duration,
-        sintomas: c.symptoms,
-        synced: true, // Marcar como sincronizado
-      }));
-      localStorage.setItem("ciclos", JSON.stringify(ciclos));
-      return;
-    }
-  } catch (error) {
-    console.error("Error cargando ciclos desde API:", error.message);
-  }
-
-  // 3. Si no hay datos en ningún lado, cargar ejemplos
+/* ============ Offline-first: carga inicial de ciclos ============ */
+const stored = localStorage.getItem("ciclos");
+if (stored) {
+  // Ya hay datos (ejemplos previos o ciclos reales), los reutilizamos
+  ciclos = JSON.parse(stored);
+} else {
+  // No hay nada en LS: inyectar sólo ejemplos marcados como syncados
   ciclos = [
     {
       id: 1,
       fecha: "2025-01-01",
       duracion: 5,
       sintomas: "Dolor abdominal, Hinchazón, Fatiga",
-      synced: false,
+      synced: true, // marca de “ejemplo” para que nunca se envíen
     },
     {
       id: 2,
       fecha: "2025-01-28",
       duracion: 6,
       sintomas: "Dolor de cabeza, Cólicos, Dolor de espalda",
-      synced: false,
+      synced: true,
     },
   ];
   ciclosPrecargados = true;
   localStorage.setItem("ciclos", JSON.stringify(ciclos));
 }
 
-// Función para mostrar predicciones
-async function mostrarPredicciones() {
-  const prediccionesContainer = document.getElementById(
-    "predicciones-container"
-  );
-  const insightsContainer = document.getElementById("insights-container");
-
-  // Mensaje de carga
-  prediccionesContainer.innerHTML =
-    '<div class="loading-predicciones"><i class="fas fa-spinner fa-spin"></i> Calculando...</div>';
-  insightsContainer.innerHTML =
-    '<div class="loading-predicciones"><i class="fas fa-spinner fa-spin"></i> Generando insights...</div>';
-
-  if (ciclos.length < 3) {
-    prediccionesContainer.innerHTML = `
-      <div class="insufficient-data">
-        <i class="fas fa-info-circle"></i>
-        <p>Necesitás registrar al menos 3 ciclos para generar predicciones.</p>
-      </div>
-    `;
-    insightsContainer.innerHTML = `
-      <div class="insufficient-data">
-        <i class="fas fa-info-circle"></i>
-        <p>Necesitás registrar al menos 3 ciclos para generar insights personalizados.</p>
-      </div>
-    `;
-    return;
-  }
+/* ==========================Trae los ciclos del usuario desde el backend y los guarda en LS, reemplazando los ejemplos ==*/
+async function fetchUserCycles() {
+  if (!userId) return;
 
   try {
-    const predictions = await safeFetch(
-      `${API_BASE_URL}/api/cycles/predictions/${userId}`
+    const res = await fetch(
+      `${API_BASE_URL}/api/cycles/${encodeURIComponent(userId)}`
     );
+    if (!res.ok) throw new Error(`Status ${res.status}`);
 
-    if (predictions.status === "insufficient_data") {
-      prediccionesContainer.innerHTML = `
-        <div class="insufficient-data">
-          <i class="fas fa-info-circle"></i>
-          <p>${predictions.message}</p>
-        </div>
-      `;
-      insightsContainer.innerHTML = `
-        <div class="insufficient-data">
-          <i class="fas fa-info-circle"></i>
-          <p>${predictions.message}</p>
-        </div>
-      `;
-      return;
-    }
+    const json = await res.json();
+    console.log("fetchUserCycles payload →", json);
 
-    // Actualizar predicciones
-    prediccionesContainer.innerHTML = `
-      <div class="prediction-item">
-        <i class="fas fa-calendar-alt"></i>
-        <span>Próximo período:</span>
-        <span id="proximo-periodo">${
-          predictions.proximoPeriodo?.mensaje || "No disponible"
-        }</span>
-      </div>
-      <div class="prediction-item">
-        <i class="fas fa-egg"></i>
-        <span>Ovulación:</span>
-        <span id="ovulacion">${
-          predictions.ovulacion?.mensaje || "No disponible"
-        }</span>
-      </div>
-      <div class="prediction-item">
-        <i class="fas fa-baby"></i>
-        <span>Probabilidad embarazo:</span>
-        <span id="fertilidad">${
-          predictions.fertilidad?.mensaje || "No disponible"
-        }</span>
-      </div>
-      <div class="prediction-item">
-        <i class="fas fa-sync-alt"></i>
-        <span>Fase actual:</span>
-        <span id="fase-actual">${
-          predictions.faseActual?.nombre || "No disponible"
-        }</span>
-      </div>
-      <div class="prediction-item">
-        <i class="fas fa-calendar-day"></i>
-        <span>Día del ciclo:</span>
-        <span id="dia-ciclo">${
-          predictions.faseActual
-            ? `${predictions.faseActual.diaDelCiclo}/${predictions.faseActual.duracionCiclo}`
-            : "No disponible"
-        }</span>
-      </div>
-    `;
+    // Extraemos el array real
+    const serverCycles = Array.isArray(json)
+      ? json
+      : json.cycles || // si viene { cycles: [...] }
+        json.data || // o si vienes { data: [...] }
+        [];
 
-    // Mostrar insights
-    if (predictions.insights) {
-      insightsContainer.innerHTML = `
-        <div class="insight-section">
-          <h3>${predictions.insights.mensaje}</h3>
-          <p>${predictions.insights.consejo}</p>
-          
-          <div class="symptoms-grid">
-            <div class="symptom-category">
-              <h4><i class="fas fa-heartbeat"></i> Síntomas físicos</h4>
-              <ul>
-                ${predictions.insights.sintomas.fisicos
-                  .map((s) => `<li>${s}</li>`)
-                  .join("")}
-              </ul>
-            </div>
-            
-            <div class="symptom-category">
-              <h4><i class="fas fa-smile"></i> Síntomas emocionales</h4>
-              <ul>
-                ${predictions.insights.sintomas.emocionales
-                  .map((s) => `<li>${s}</li>`)
-                  .join("")}
-              </ul>
-            </div>
-            
-            <div class="symptom-category">
-              <h4><i class="fas fa-lightbulb"></i> Consejos</h4>
-              <ul>
-                ${predictions.insights.sintomas.consejos
-                  .map((s) => `<li>${s}</li>`)
-                  .join("")}
-              </ul>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-  } catch (error) {
-    prediccionesContainer.innerHTML = `
-      <div class="insufficient-data">
-        <i class="fas fa-exclamation-triangle"></i>
-        <p>Error al cargar predicciones: ${error.message}</p>
-      </div>
-    `;
-    insightsContainer.innerHTML = `
-      <div class="insufficient-data">
-        <i class="fas fa-exclamation-triangle"></i>
-        <p>Error al cargar insights: ${error.message}</p>
-      </div>
-    `;
+    // Mapeamos al formato local
+    ciclos = serverCycles.map((c, i) => ({
+      id: i + 1,
+      fecha: c.startDate,
+      duracion: c.duration,
+      sintomas: c.symptoms,
+      synced: true,
+    }));
+
+    // Reemplazamos en localStorage (limpiamos ejemplos)
+    localStorage.setItem("ciclos", JSON.stringify(ciclos));
+    ciclosPrecargados = false;
+
+    // Actualizamos UI y predicciones
+    mostrarCiclos();
+    fetchPredictions();
+  } catch (err) {
+    console.error("Error al cargar ciclos reales:", err);
   }
 }
 
-// Función para sincronizar datos con la API
-async function sincronizarConAPI() {
+/* ===== Sincronización Offline-First de Ciclos ===== */
+async function syncPendingCycles() {
+  // 1) Salir si estamos offline
   if (!navigator.onLine) return;
 
-  try {
-    const ciclosLocales = JSON.parse(localStorage.getItem("ciclos")) || [];
-    let needsUpdate = false;
+  // 2) Leer array desde LS
+  const storedArr = JSON.parse(localStorage.getItem("ciclos") || "[]");
+  let changed = false;
 
-    for (const ciclo of ciclosLocales) {
-      // Sincronizar solo si no tiene ID de MongoDB o no está marcado como sincronizado
-      if (!ciclo._id || !ciclo.synced) {
-        const response = await safeFetch(`${API_BASE_URL}/api/cycles`, {
+  // 3) Por cada ciclo con synced === false → POST al backend
+  for (const ciclo of storedArr) {
+    if (ciclo.synced === false) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/cycles`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userId,
-            startDate: ciclo.fecha,
-            duration: ciclo.duracion,
-            symptoms: ciclo.sintomas,
+            userId: userId, // tal cual guardaste en LS
+            startDate: ciclo.fecha, // renombrado para la API
+            duration: ciclo.duracion, // coincide con tu esquema
+            symptoms: ciclo.sintomas, // en inglés
           }),
         });
 
-        // Actualizar ciclo local con ID de MongoDB
-        if (response && response._id) {
-          ciclo._id = response._id;
+        if (res.ok) {
           ciclo.synced = true;
-          needsUpdate = true;
+          changed = true;
+        } else {
+          // Capturar body de error
+          const errorText = await res.text();
+          console.error(
+            `Sync falló ciclo ${ciclo.id}: HTTP ${res.status}`,
+            errorText
+          );
         }
+      } catch (err) {
+        console.error(`Error de red al sync ciclo ${ciclo.id}:`, err);
       }
     }
+  }
 
-    if (needsUpdate) {
-      localStorage.setItem("ciclos", JSON.stringify(ciclosLocales));
-      localStorage.setItem("lastSync", new Date().toISOString());
-    }
-  } catch (error) {
-    console.error("Error sincronizando con API:", error);
+  // 4) Si hubo cambios, actualizar LS y la variable runtime
+  if (changed) {
+    localStorage.setItem("ciclos", JSON.stringify(storedArr));
+    ciclos = storedArr;
+    console.log("Ciclos sincronizados con la API");
+    // Dispara predicciones actualizadas
+    fetchPredictions();
   }
 }
 
-// Función para mostrar ciclos
-function mostrarCiclos() {
-  const cycleList = document.getElementById("lista-ciclos");
-  if (!cycleList) return;
+// 5) Listener de reconexión
+window.addEventListener("online", syncPendingCycles);
 
-  cycleList.innerHTML = "";
+/* ====================GET /api/cycles/predictions/:userId ========================
+  Solo si hay al menos 2 ciclos reales */
+async function fetchPredictions() {
+  if (!userId) return;
+  const realesCount = ciclos.filter((c) => c.synced).length;
+  if (realesCount < 2) return;
 
-  // Mostrar estado vacío si no hay ciclos
-  if (ciclos.length === 0) {
-    const emptyState = document.querySelector(".empty-state");
-    if (emptyState) cycleList.appendChild(emptyState.cloneNode(true));
-    return;
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/cycles/predictions/${encodeURIComponent(userId)}`
+    );
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+
+    const json = await res.json();
+    console.log("fetchPredictions payload →", json);
+
+    // Si viene envuelto en .data, hacemos:
+    const payload = json.proximoPeriodo ? json : json.data || {};
+
+    // Si no hay proximoPeriodo, abortamos
+    if (!payload.proximoPeriodo) return;
+
+    showPredictions(payload);
+  } catch (err) {
+    console.error("Error al obtener predicciones:", err);
+  }
+}
+
+/*======================== RenderizaR la respuesta de predicciones dentro de #predictions ===========*/
+/* ==================== Función mejorada para mostrar predicciones ======================== */
+function showPredictions(data) {
+  const container = document.getElementById("predictions-container");
+  const insightsContainer = document.getElementById("insights-content");
+  if (!container || !insightsContainer) return;
+
+  // Limpiar contenedores
+  container.innerHTML = "";
+  insightsContainer.innerHTML = "";
+
+  // Extraer datos
+  const {
+    proximoPeriodo,
+    ovulacion,
+    fertilidad,
+    faseActual,
+    estadisticas,
+    insights,
+  } = data;
+
+  // Crear tarjetas para cada predicción
+  const predictionCards = [
+    {
+      title: "Próximo Período",
+      icon: "calendar-alt",
+      content: `
+        <p><strong>Fecha:</strong> ${proximoPeriodo.fecha}</p>
+        <p><strong>Días restantes:</strong> ${proximoPeriodo.diasRestantes}</p>
+        <p>${proximoPeriodo.mensaje}</p>
+      `,
+    },
+    {
+      title: "Ovulación",
+      icon: "egg",
+      content: `
+        <p><strong>Estado:</strong> ${ovulacion.estado}</p>
+        <p><strong>Fecha:</strong> ${ovulacion.fechaAmigable} (${
+        ovulacion.fecha
+      })</p>
+        <p><strong>Ventana fértil:</strong> ${
+          ovulacion.ventanaFertil ? "Sí" : "No"
+        }</p>
+        <p>${ovulacion.mensaje}</p>
+      `,
+    },
+    {
+      title: "Fertilidad",
+      icon: "heart",
+      content: `
+        <p><strong>Probabilidad:</strong> ${fertilidad.probabilidad}</p>
+        <p><strong>Nivel:</strong> ${fertilidad.nivel}</p>
+        <p>${fertilidad.mensaje}</p>
+      `,
+    },
+    {
+      title: "Fase Actual",
+      icon: "moon",
+      content: `
+        <p>${faseActual.nombre} (Día ${faseActual.diaDelCiclo} de ${
+        faseActual.duracionCiclo
+      })</p>
+        <p>${faseActual.descripcion || ""}</p>
+      `,
+    },
+    {
+      title: "Estadísticas",
+      icon: "chart-bar",
+      content: `
+        <h4>Ciclo</h4>
+        <ul>
+          <li>Duración promedio: ${estadisticas.ciclo.duracionPromedio} días</li>
+          <li>Variabilidad: ${estadisticas.ciclo.variabilidad} días</li>
+          <li>Regularidad: ${estadisticas.ciclo.regularidad}</li>
+          <li>Último período: ${estadisticas.ciclo.ultimoPeriodo}</li>
+          <li>Siguiente predicción: ${estadisticas.ciclo.siguientePrediccion}</li>
+        </ul>
+        <h4>Menstruación</h4>
+        <ul>
+          <li>Duración promedio: ${estadisticas.menstruacion.duracionPromedio} días</li>
+          <li>Última duración: ${estadisticas.menstruacion.ultimaDuracion} días</li>
+        </ul>
+        <h4>Precisión</h4>
+        <ul>
+          <li>Ciclos analizados: ${estadisticas.precision.ciclosAnalizados}</li>
+          <li>Confiabilidad: ${estadisticas.precision.confiabilidad}</li>
+          <li>Intervalos calculados: ${estadisticas.precision.intervalosCalculados}</li>
+        </ul>
+      `,
+    },
+  ];
+
+  // Renderizar tarjetas de predicciones
+  predictionCards.forEach((card) => {
+    const cardElement = document.createElement("div");
+    cardElement.className = "prediction-card";
+    cardElement.innerHTML = `
+      <div class="prediction-header">
+        <i class="fas fa-${card.icon}"></i>
+        <h3>${card.title}</h3>
+      </div>
+      ${card.content}
+    `;
+    container.appendChild(cardElement);
+  });
+
+  // Renderizar insights
+  insightsContainer.innerHTML = `
+    <div class="insight-item">
+      <p><strong>Mensaje:</strong> ${insights.mensaje}</p>
+    </div>
+    <div class="insight-item">
+      <h3>Consejo</h3>
+      <p>${insights.consejo}</p>
+    </div>
+    <div class="insight-item">
+      <h3>Síntomas físicos</h3>
+      <p>${insights.sintomas.fisicos.join(", ")}</p>
+    </div>
+    <div class="insight-item">
+      <h3>Síntomas emocionales</h3>
+      <p>${insights.sintomas.emocionales.join(", ")}</p>
+    </div>
+    <div class="insight-item">
+      <h3>Recomendaciones</h3>
+      <p>${insights.sintomas.consejos.join(", ")}</p>
+    </div>
+  `;
+}
+/* =========================== DOM  ============================ */
+
+document.addEventListener("DOMContentLoaded", function () {
+  // Elementos del DOM relacionados al formulario por pasos
+  const form = document.getElementById("form-ciclo");
+  const formCards = document.querySelectorAll(".form-card"); // Tarjetas del form
+  const nextButtons = document.querySelectorAll(".next-btn"); // Botones siguiente
+  const prevButtons = document.querySelectorAll(".prev-btn"); // Botones Anterior
+  const indicatorDots = document.querySelectorAll(".indicator-dot"); // Puntos para pasar de tarjeta
+  const cycleList = document.getElementById("lista-ciclos"); // Lista donde se muestran los ciclos
+  const emptyState = document.querySelector(".empty-state"); // Tarjeta que indica que no se han ingresado ciclos ( de estado vacío)
+
+  // —— MENÚ DE USUARIO (TODO este bloque) ——
+  const userMenu = document.querySelector(".user-menu");
+  const userIcon = document.querySelector(".user-icon");
+  const userDropdown = document.querySelector(".user-dropdown");
+  const logoutBtn = document.getElementById("logout-btn");
+
+  if (userIcon && userDropdown && logoutBtn) {
+    // Mostrar/ocultar menú
+    userIcon.addEventListener("click", (e) => {
+      e.stopPropagation();
+      userDropdown.hidden = !userDropdown.hidden;
+    });
+
+    // Cerrar sesión
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("userId");
+      localStorage.removeItem("userName");
+      userDropdown.hidden = true;
+      showUnauthenticatedState();
+    });
+
+    // Ocultar menú al hacer clic fuera
+    document.addEventListener("click", (e) => {
+      if (!userMenu.contains(e.target)) {
+        userDropdown.hidden = true;
+      }
+    });
+
+    // Función para actualizar visibilidad del menú
+    function updateAuthStateUI() {
+      if (localStorage.getItem("userId")) {
+        userMenu.style.display = "block";
+        userDropdown.hidden = true;
+      } else {
+        userMenu.style.display = "none";
+      }
+    }
+
+    // Ensamblamos updateAuthStateUI dentro de los estados
+    const origShowAuth = showAuthenticatedState;
+    showAuthenticatedState = () => {
+      origShowAuth();
+      updateAuthStateUI();
+    };
+
+    const origShowUnauth = showUnauthenticatedState;
+    showUnauthenticatedState = () => {
+      origShowUnauth();
+      updateAuthStateUI();
+    };
+
+    // Mostrar/Ocultar al cargar
+    updateAuthStateUI();
   }
 
-  // Ordenar y mostrar ciclos
-  const ciclosOrdenados = [...ciclos].sort(
-    (a, b) => new Date(b.fecha) - new Date(a.fecha)
-  );
+  // Al cargar la página
+  if (userId && userName) {
+    showAuthenticatedState();
+    fetchUserCycles();
+  } else {
+    showUnauthenticatedState();
+    // Eliminar nombre anterior si existe
+    localStorage.removeItem("nombre");
+  }
 
-  ciclosOrdenados.forEach((ciclo) => {
-    const listItem = document.createElement("li");
-    listItem.innerHTML = `
+  // Función para mostrar errores
+  function showError(form, message) {
+    // Eliminar errores anteriores en este formulario
+    const existingError = form.querySelector(".error-message");
+    if (existingError) existingError.remove();
+
+    const errorElement = document.createElement("div");
+    errorElement.className = "error-message";
+    errorElement.textContent = message;
+
+    // Insertar después del último elemento del formulario
+    form.appendChild(errorElement);
+  }
+
+  // Se cargan los ciclos existentes al iniciar la página
+  mostrarCiclos();
+
+  // Luego de mostrar la lista de ciclos, pedimos predicciones si hay suficientes datos
+  fetchPredictions();
+
+  let currentStep = 0; // Paso actual del formulario
+
+  // Función para cambiar de tarjeta en el formulario por pasos
+  function updateStep(newStep) {
+    // Se oculta tarjeta actual
+    formCards[currentStep].classList.remove("active");
+    indicatorDots[currentStep].classList.remove("active");
+
+    // Se muestra una tarjeta nueva
+    currentStep = newStep;
+    formCards[currentStep].classList.add("active");
+    indicatorDots[currentStep].classList.add("active");
+  }
+
+  // Event listeners para cambiar de tarjeta al hacer click en botones Siguiente
+  nextButtons.forEach((button) => {
+    button.addEventListener("click", function () {
+      if (currentStep < formCards.length - 1) {
+        updateStep(currentStep + 1);
+      }
+    });
+  });
+
+  // Event listeners para volver atrás al hacer click en botones Anterior
+  prevButtons.forEach((button) => {
+    button.addEventListener("click", function () {
+      if (currentStep > 0) {
+        updateStep(currentStep - 1);
+      }
+    });
+  });
+
+  /* ========== Registro de datos ingresados mediante el formulario ========== */
+  /* 
+// Se obtiene la información ingresada (fecha, duración, síntomas)
+// Se crea un nuevo objeto y se agrega al array ciclos
+// Se eliminan los ciclos de de ejemplo y se actualiza la lista con los nuevos datos
+*/
+
+  // Envío del formulario
+  form.addEventListener("submit", function (e) {
+    e.preventDefault(); // Evita que se recargue la página
+
+    // Se obtienen los valores ingresados por la usuaria en el formulario
+    const fecha = document.getElementById("fecha").value;
+    const duracion = parseInt(document.getElementById("duracion").value);
+    const sintomas = document.getElementById("sintomas").value;
+
+    // Validación simple: si no se ingresó fecha o duración, se muestra un mensaje de error
+    if (!fecha || isNaN(duracion) || duracion <= 0) {
+      alert("Por favor, completa todos los campos correctamente.");
+      return; // Detiene la ejecución si hay error
+    }
+
+    // Se eliminan los ciclos de muestra al agregar el primer ciclo real
+    /* if (ciclosPrecargados) {
+      ciclos = []; // Se eliminan todos los ciclos actuales (los de ejemplo)
+      ciclosPrecargados = false; // Evita que esto vuelva a ejecutarse
+    } */
+
+    // Se crea un nuevo objeto con los nuevos datos ingresados del ciclo
+    const nuevoCiclo = {
+      id: ciclos[ciclos.length - 1]?.id + 1 || 1, // ID autoincremental
+      fecha,
+      duracion,
+      sintomas,
+      synced: false, // marca como “pendiente” de enviar al servidor
+    };
+
+    // Se agrega el nuevo ciclo al array
+    ciclos.push(nuevoCiclo);
+
+    localStorage.setItem("ciclos", JSON.stringify(ciclos));
+
+    // Se actualiza la lista de ciclos en pantalla
+    /* mostrarCiclos();
+
+    ciclos.push(nuevoCiclo);
+    localStorage.setItem("ciclos", JSON.stringify(ciclos)); */
+
+    // Intentar sincronizar inmediatamente los ciclos pendientes
+    syncPendingCycles();
+
+    // Se actualiza la lista de ciclos en pantalla
+    mostrarCiclos();
+
+    // Se actualiza ciclosPrecargados para avisar que ya no deben mostrarse solo los ciclos de prueba
+    ciclosPrecargados = false;
+
+    // Si la tarjeta de estado vacío está visible, se remueve
+    if (emptyState && cycleList.contains(emptyState)) {
+      cycleList.removeChild(emptyState);
+    }
+
+    // Se vuelve a mostrar la lista actualizada
+    mostrarCiclos();
+
+    // Se resetea el formulario y se vuelve al primer paso
+    form.reset();
+    updateStep(0);
+
+    // Se muestra animación de éxito de carga de datos
+    showSuccessAnimation();
+  });
+
+  // Función para ordenar ciclos por fecha (más reciente primero)
+  function ordenarCiclosPorFechaDesc(array) {
+    return [...array].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  }
+
+  /* ========== Mostrar ciclos dinámicamente en el DOM ========== */
+  /* 
+  - Se limpia la lista previa y se agregan los ciclos ordenados por fecha
+  - Se usa una función para formatear fechas en español
+  */
+
+  // Función para mostrar los datos de los ciclos en pantalla
+  function mostrarCiclos() {
+    // Se limpia el contenido anterior de la lista (por si ya hay ciclos)
+    cycleList.innerHTML = "";
+
+    // Si no hay ciclos nuevos agregados por la usuaria (es decir, solo están los precargados)
+    // se muestra el estado vacío como indicación visual. Esto se controla con la variable ciclosPrecargados.
+    if (ciclos.length === 0 || ciclosPrecargados) {
+      cycleList.appendChild(emptyState.cloneNode(true));
+    }
+
+    // Se ordena el array de ciclos por fecha usando la función ordenarCiclosPorFechaDesc y se guarda en ciclosOrdenados
+    const ciclosOrdenados = ordenarCiclosPorFechaDesc(ciclos);
+
+    // Se recorre cada ciclo del array ordenado y cada uno se inserta como lista en el HTML
+    ciclosOrdenados.forEach((ciclo) => {
+      const listItem = document.createElement("li");
+
+      // Se le agrega contenido HTML con los datos del ciclo, incluyendo la fecha formateada
+      listItem.innerHTML = `
       <div>
         <div class="cycle-date">${formatDate(ciclo.fecha)}</div>
         <div class="cycle-symptoms">${
@@ -484,130 +792,72 @@ function mostrarCiclos() {
       </div>
       <div class="cycle-duration">${ciclo.duracion} días</div>
     `;
-    cycleList.appendChild(listItem);
-  });
-}
-
-// Función para formatear fechas
-function formatDate(dateString) {
-  try {
-    return new Date(dateString).toLocaleDateString("es-ES", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+      // Se inserta la lista en el DOM
+      cycleList.appendChild(listItem);
     });
-  } catch {
-    return "Fecha inválida";
   }
-}
 
-// Función para mostrar animación de éxito
-function showSuccessAnimation() {
-  const successMsg = document.createElement("div");
-  successMsg.className = "success-animation";
-  successMsg.innerHTML = `
-    <i class="fas fa-check-circle"></i>
-    <div>Ciclo registrado exitosamente</div>
-  `;
-  document.body.appendChild(successMsg);
+  // Función para mostrar fechas en español
+  function formatDate(dateString) {
+    const options = { year: "numeric", month: "long", day: "numeric" };
+    return new Date(dateString).toLocaleDateString("es-ES", options);
+  }
 
-  setTimeout(() => {
-    successMsg.remove();
-  }, 3000);
-}
+  /* ========== Mostrar notificación animada al guardar un ciclo ========== */
+  /* 
+  - Se crea una notificación (toast) con estilos
+  - Se elimina automáticamente después de unos segundos  */
 
-document.addEventListener("DOMContentLoaded", async function () {
-  // 0️⃣ Autenticación / registro
-  try {
-    const auth = await ensureUser();
-    userId = auth.userId;
-    userName = auth.userName;
+  // Se muestra animación cuando se guarda un ciclo con éxito
+  function showSuccessAnimation() {
+    const successMsg = document.createElement("div");
+    successMsg.style.cssText = `
+      position: fixed;
+      top: 30px;
+      right: 30px;
+      background: var(--accent-mint);
+      color: var(--dark-brown);
+      padding: 1.2rem 2rem;
+      border-radius: var(--element-radius);
+      box-shadow: var(--shadow-hover);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-weight: 600;
+      font-size: 1rem;
+      animation: slideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), fadeOut 0.6s ease 3s forwards;
+      border-radius: var(--card-radius);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+    `;
 
-    // Actualizar saludo con nombre real
-    const titulo = document.querySelector("header h1");
-    titulo.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola ${userName}! ¿Cómo te sentís hoy?`;
+    successMsg.innerHTML = `
+      <i class="fas fa-check-circle" style="color: var(--accent-lavender); font-size: 1.6rem;"></i>
+      <div>Ciclo registrado exitosamente</div>
+    `;
 
-    // Inicializar elementos del DOM
-    const form = document.getElementById("form-ciclo");
-    const formCards = document.querySelectorAll(".form-card");
-    const nextButtons = document.querySelectorAll(".next-btn");
-    const prevButtons = document.querySelectorAll(".prev-btn");
-    const indicatorDots = document.querySelectorAll(".indicator-dot");
-    let currentStep = 0;
+    document.body.appendChild(successMsg);
 
-    // Cargar datos iniciales
-    await cargarCiclos();
-    mostrarCiclos();
-    await mostrarPredicciones();
-
-    // Sincronizar con API en segundo plano
-    setTimeout(sincronizarConAPI, 2000);
-
-    // Función para cambiar pasos del formulario
-    function updateStep(newStep) {
-      formCards[currentStep].classList.remove("active");
-      indicatorDots[currentStep].classList.remove("active");
-      currentStep = newStep;
-      formCards[currentStep].classList.add("active");
-      indicatorDots[currentStep].classList.add("active");
-    }
-
-    // Event listeners para botones
-    nextButtons.forEach((button) => {
-      button.addEventListener(
-        "click",
-        () => currentStep < formCards.length - 1 && updateStep(currentStep + 1)
-      );
-    });
-
-    prevButtons.forEach((button) => {
-      button.addEventListener(
-        "click",
-        () => currentStep > 0 && updateStep(currentStep - 1)
-      );
-    });
-
-    // Event listener para enviar formulario
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const fecha = document.getElementById("fecha").value;
-      const duracion = parseInt(document.getElementById("duracion").value);
-      const sintomas = document.getElementById("sintomas").value;
-
-      // Validación básica
-      if (!fecha || isNaN(duracion) || duracion <= 0) {
-        alert("Por favor completa todos los campos correctamente");
-        return;
+    // Se remueve animación después de 3.6 segundos
+    setTimeout(() => {
+      if (successMsg.parentNode === document.body) {
+        document.body.removeChild(successMsg);
       }
-
-      // Crear nuevo ciclo
-      const nuevoCiclo = {
-        id: ciclos.length > 0 ? Math.max(...ciclos.map((c) => c.id)) + 1 : 1,
-        fecha,
-        duracion,
-        sintomas,
-        userId,
-        synced: false,
-      };
-
-      // Guardar localmente
-      ciclos.push(nuevoCiclo);
-      localStorage.setItem("ciclos", JSON.stringify(ciclos));
-
-      // Actualizar UI
-      mostrarCiclos();
-      await mostrarPredicciones();
-
-      // Sincronizar con API en segundo plano
-      sincronizarConAPI();
-
-      // Resetear formulario
-      form.reset();
-      updateStep(0);
-      showSuccessAnimation();
-    });
-  } catch (error) {
-    console.error("Error en inicialización:", error);
+    }, 3600);
   }
+
+  // Se agregan estilos de animación para el mensaje de éxito de carga de de ciclo
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes slideIn {
+      from { transform: translateX(100%) translateY(20px); opacity: 0; }
+      to { transform: translateX(0) translateY(0); opacity: 1; }
+    }
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-20px); }
+    }
+  `;
+  document.head.appendChild(style);
 });

@@ -54,69 +54,13 @@ function showUnauthenticatedState() {
   greetingText.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola! ¿Cómo te sentís hoy?`;
 }
 
-// ======================= MENÚ DE USUARIO =======================
-
-// Elementos del menú de usuario
-/* const userMenu = document.querySelector(".user-menu");
-const userIcon = document.querySelector(".user-icon");
-const userDropdown = document.querySelector(".user-dropdown");
-const logoutBtn = document.getElementById("logout-btn");
-
-// Solo si existen estos elementos
-if (userIcon && userDropdown && logoutBtn) {
-  // Mostrar/ocultar menú
-  userIcon.addEventListener("click", (e) => {
-    e.stopPropagation();
-    userDropdown.hidden = !userDropdown.hidden;
-  });
-
-  // Cerrar sesión
-  logoutBtn.addEventListener("click", () => {
-    localStorage.removeItem("userId");
-    localStorage.removeItem("userName");
-    userDropdown.hidden = true;
-    showUnauthenticatedState();
-  });
-
-  // Ocultar menú al hacer clic fuera
-  document.addEventListener("click", (e) => {
-    if (!userMenu.contains(e.target)) {
-      userDropdown.hidden = true;
-    }
-  });
-
-  // Actualizar visibilidad del menú en estados de autenticación
-  function updateAuthStateUI() {
-    if (localStorage.getItem("userId")) {
-      userMenu.style.display = "block";
-      userDropdown.hidden = true;
-    } else {
-      userMenu.style.display = "none";
-    }
-  }
-
-  // Actualizar UI al cambiar estados
-  const originalShowAuth = showAuthenticatedState;
-  showAuthenticatedState = function () {
-    originalShowAuth();
-    updateAuthStateUI();
-  };
-
-  const originalShowUnauth = showUnauthenticatedState;
-  showUnauthenticatedState = function () {
-    originalShowUnauth();
-    updateAuthStateUI();
-  };
-
-  // Inicializar UI
-  updateAuthStateUI();
-} */
+// ======================= MENÚ DE USUARIa =======================
 
 // Verificar si debemos limpiar los ciclos de ejemplo
-if (userId && !ciclosPrecargados) {
+/* if (userId && !ciclosPrecargados) {
   localStorage.removeItem("ciclos");
   ciclos = [];
-}
+} */
 
 // Manejar tabs
 tabButtons.forEach((button) => {
@@ -181,6 +125,8 @@ registerForm.addEventListener("submit", async (e) => {
       authModal.classList.remove("active");
       showAuthenticatedState();
 
+      syncPendingCycles();
+
       // Mostrar notificación de éxito
       showSuccessNotification("¡Registro exitoso! ¡Bienvenida!");
     } else {
@@ -244,6 +190,7 @@ loginForm.addEventListener("submit", async (e) => {
       localStorage.setItem("userId", data.userId);
       localStorage.setItem("userName", data.name);
       showAuthenticatedState();
+      syncPendingCycles();
       showSuccessNotification("¡Bienvenida de nuevo!");
     } else {
       // Mostrar error
@@ -302,33 +249,223 @@ function showSuccessNotification(message) {
 
 /* ============ Ciclos: leer de localStorage o cargar ejemplo ============ */
 
-// Verificar si hay ciclos guardados en localStorage
-const ciclosGuardados = localStorage.getItem("ciclos");
-
-if (ciclosGuardados) {
-  // Si existen ciclos guardados, se cargan desde Storage
-  ciclos = JSON.parse(ciclosGuardados);
+/* ============ Offline-first: carga inicial de ciclos ============ */
+const stored = localStorage.getItem("ciclos");
+if (stored) {
+  // 1) Ya hay ciclos guardados, cargarlos (tanto reales como ejemplos previos)
+  ciclos = JSON.parse(stored);
 } else {
-  // Si no hay nada en Storage, se cargan ciclos de ejemplo
+  // 2) No hay nada en LS: inyectar solo ejemplos marcados como "syncados"
   ciclos = [
     {
       id: 1,
       fecha: "2025-01-01",
       duracion: 5,
       sintomas: "Dolor abdominal, Hinchazón, Fatiga",
+      synced: true, // así nunca se envían al servidor
     },
     {
       id: 2,
       fecha: "2025-01-28",
       duracion: 6,
       sintomas: "Dolor de cabeza, Cólicos, Dolor de espalda",
+      synced: true,
     },
   ];
   ciclosPrecargados = true;
 
-  // se guardan los ciclos de ejemplo en localStorage para persistencia
+  // Guardar ejemplos en LS para poder mostrarlos, pero ya vienen "synced"
   localStorage.setItem("ciclos", JSON.stringify(ciclos));
 }
+
+/* ===== Sincronización Offline-First de Ciclos ===== */
+async function syncPendingCycles() {
+  // 1) Salir si estamos offline
+  if (!navigator.onLine) return;
+
+  // 2) Leer array desde LS
+  const storedArr = JSON.parse(localStorage.getItem("ciclos") || "[]");
+  let changed = false;
+
+  // 3) Por cada ciclo con synced === false → POST al backend
+  for (const ciclo of storedArr) {
+    if (ciclo.synced === false) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/cycles`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: userId, // tal cual guardaste en LS
+            startDate: ciclo.fecha, // renombrado para la API
+            duration: ciclo.duracion, // coincide con tu esquema
+            symptoms: ciclo.sintomas, // en inglés
+          }),
+        });
+
+        if (res.ok) {
+          ciclo.synced = true;
+          changed = true;
+        } else {
+          // Capturar body de error
+          const errorText = await res.text();
+          console.error(
+            `Sync falló ciclo ${ciclo.id}: HTTP ${res.status}`,
+            errorText
+          );
+        }
+      } catch (err) {
+        console.error(`Error de red al sync ciclo ${ciclo.id}:`, err);
+      }
+    }
+  }
+
+  // 4) Si hubo cambios, actualizar LS y la variable runtime
+  if (changed) {
+    localStorage.setItem("ciclos", JSON.stringify(storedArr));
+    ciclos = storedArr;
+    console.log("Ciclos sincronizados con la API");
+    // Dispara predicciones actualizadas
+    fetchPredictions();
+  }
+}
+
+// 5) Listener de reconexión
+window.addEventListener("online", syncPendingCycles);
+
+/* ====================GET /api/cycles/predictions/:userId ========================
+  Solo si hay al menos 2 ciclos reales */
+async function fetchPredictions() {
+  // 1) Verificar prerrequisitos
+  if (!userId) return;
+  // Filtramos de LS o del array runtime
+  const reales = ciclos
+    .filter((c) => (c.synced === false ? false : true))
+    .filter((c) => !c.synced || c.synced) // esto incluye ejemplos y reales
+    .filter(
+      (c) =>
+        (c.synced === true && ciclosPrecargados === false) ||
+        (c.synced === false) === false
+    );
+  // Más sencillo: contar los ciclos reales subidos
+  const realesCount = ciclos.filter((c) => c.synced === true).length;
+  if (realesCount < 2) return;
+
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/cycles/predictions/${encodeURIComponent(userId)}`
+    );
+    if (!res.ok) {
+      throw new Error(`Status ${res.status}`);
+    }
+    const data = await res.json();
+    showPredictions(data);
+  } catch (err) {
+    console.error("Error al obtener predicciones:", err);
+  }
+}
+
+/*======================== RenderizaR la respuesta de predicciones dentro de #predictions ===========*/
+function showPredictions(data) {
+  const cont = document.getElementById("predictions");
+  if (!cont) return;
+
+  // Extraemos cada bloque de la respuesta
+  const {
+    proximoPeriodo,
+    ovulacion,
+    fertilidad,
+    faseActual,
+    estadisticas,
+    insights,
+  } = data;
+
+  cont.innerHTML = `
+    <h2>Predicciones</h2>
+    
+    <div class="prediction-block">
+      <h3>Próximo Período</h3>
+      <p><strong>Fecha:</strong> ${proximoPeriodo.fecha}</p>
+      <p><strong>Días restantes:</strong> ${proximoPeriodo.diasRestantes}</p>
+      <p>${proximoPeriodo.mensaje}</p>
+    </div>
+    
+    <div class="prediction-block">
+      <h3>Ovulación</h3>
+      <p><strong>Estado:</strong> ${ovulacion.estado}</p>
+      <p><strong>Fecha:</strong> ${ovulacion.fechaAmigable} (${
+    ovulacion.fecha
+  })</p>
+      <p><strong>Ventana fértil:</strong> ${
+        ovulacion.ventanaFertil ? "Sí" : "No"
+      }</p>
+      <p>${ovulacion.mensaje}</p>
+    </div>
+    
+    <div class="prediction-block">
+      <h3>Fertilidad</h3>
+      <p><strong>Probabilidad:</strong> ${fertilidad.probabilidad}</p>
+      <p><strong>Nivel:</strong> ${fertilidad.nivel}</p>
+      <p>${fertilidad.mensaje}</p>
+    </div>
+    
+    <div class="prediction-block">
+      <h3>Fase Actual</h3>
+      <p>${faseActual.nombre} (Día ${faseActual.diaDelCiclo} de ${
+    faseActual.duracionCiclo
+  })</p>
+    </div>
+    
+    <div class="prediction-block">
+      <h3>Estadísticas de Ciclo</h3>
+      <ul>
+        <li>Duración promedio: ${estadisticas.ciclo.duracionPromedio} días</li>
+        <li>Variabilidad: ${estadisticas.ciclo.variabilidad} días</li>
+        <li>Regularidad: ${estadisticas.ciclo.regularidad}</li>
+        <li>Último período: ${estadisticas.ciclo.ultimoPeriodo}</li>
+        <li>Siguiente predicción: ${estadisticas.ciclo.siguientePrediccion}</li>
+      </ul>
+    </div>
+    
+    <div class="prediction-block">
+      <h3>Estadísticas de Menstruación</h3>
+      <ul>
+        <li>Duración promedio: ${
+          estadisticas.menstruacion.duracionPromedio
+        } días</li>
+        <li>Última duración: ${
+          estadisticas.menstruacion.ultimaDuracion
+        } días</li>
+      </ul>
+    </div>
+    
+    <div class="prediction-block">
+      <h3>Precisión</h3>
+      <ul>
+        <li>Ciclos analizados: ${estadisticas.precision.ciclosAnalizados}</li>
+        <li>Confiabilidad: ${estadisticas.precision.confiabilidad}</li>
+        <li>Intervalos calculados: ${
+          estadisticas.precision.intervalosCalculados
+        }</li>
+      </ul>
+    </div>
+    
+    <div class="prediction-block">
+      <h3>Insights</h3>
+      <p>${insights.mensaje}</p>
+      <p><strong>Consejo:</strong> ${insights.consejo}</p>
+      <p><strong>Síntomas físicos:</strong> ${insights.sintomas.fisicos.join(
+        ", "
+      )}</p>
+      <p><strong>Síntomas emocionales:</strong> ${insights.sintomas.emocionales.join(
+        ", "
+      )}</p>
+      <p><strong>Recomendaciones:</strong> ${insights.sintomas.consejos.join(
+        ", "
+      )}</p>
+    </div>
+  `;
+}
+/* =========================== DOM  ============================ */
 
 document.addEventListener("DOMContentLoaded", function () {
   // Elementos del DOM relacionados al formulario por pasos
@@ -421,6 +558,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // Se cargan los ciclos existentes al iniciar la página
   mostrarCiclos();
 
+  // Luego de mostrar la lista de ciclos, pedimos predicciones si hay suficientes datos
+  fetchPredictions();
+
   let currentStep = 0; // Paso actual del formulario
 
   // Función para cambiar de tarjeta en el formulario por pasos
@@ -487,12 +627,22 @@ document.addEventListener("DOMContentLoaded", function () {
       fecha,
       duracion,
       sintomas,
+      synced: false, // marca como “pendiente” de enviar al servidor
     };
 
     // Se agrega el nuevo ciclo al array
     ciclos.push(nuevoCiclo);
 
     localStorage.setItem("ciclos", JSON.stringify(ciclos));
+
+    // Se actualiza la lista de ciclos en pantalla
+    /* mostrarCiclos();
+
+    ciclos.push(nuevoCiclo);
+    localStorage.setItem("ciclos", JSON.stringify(ciclos)); */
+
+    // Intentar sincronizar inmediatamente los ciclos pendientes
+    syncPendingCycles();
 
     // Se actualiza la lista de ciclos en pantalla
     mostrarCiclos();
