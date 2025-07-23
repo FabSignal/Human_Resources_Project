@@ -9,9 +9,67 @@
 </head>
 <body>
   <header>
-    <h1><span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola 'nombre'!¿Cómo te sentís hoy?</h1>
+    <h1><span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola  <span id="userName"></span>! ¿Cómo te sentís hoy?</h1>
     <p class="subtitle">Cuidarte empieza por conocerte. ¡Registrá tu ciclo!</p>
   </header>
+
+ <!--  <header>
+    <div class="header-content">
+      <div>
+    <h1><span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola 'nombre'!¿Cómo te sentís hoy?</h1>
+    <p class="subtitle">Cuidarte empieza por conocerte. ¡Registrá tu ciclo!</p>
+    </div>
+  </div>
+</header> -->
+
+<div class="user-menu">
+    <button class="user-icon"><i class="fas fa-user-circle"></i></button>
+    <div class="user-dropdown" hidden>
+      <button id="logout-btn">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- Modal de autenticación -->
+<div id="auth-modal" class="modal" hidden>
+  <div class="modal-content">
+    <div class="modal-tabs">
+      <button class="tab-btn active" data-tab="login">Iniciar Sesión</button>
+      <button class="tab-btn" data-tab="register">Registrarse</button>
+    </div>
+    
+    <!-- Formulario de Login -->
+    <form id="login-form" class="auth-form active">
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" required>
+      </div>
+      <div class="form-group">
+        <label for="login-password">Contraseña</label>
+        <input type="password" id="login-password" required>
+      </div>
+      <button type="submit">Ingresar</button>
+    </form>
+    
+    <!-- Formulario de Registro -->
+    <form id="register-form" class="auth-form">
+      <div class="form-group">
+        <label for="register-name">Nombre</label>
+        <input type="text" id="register-name" required>
+      </div>
+      <div class="form-group">
+        <label for="register-email">Email</label>
+        <input type="email" id="register-email" required>
+      </div>
+      <div class="form-group">
+        <label for="register-password">Contraseña</label>
+        <input type="password" id="register-password" required>
+      </div>
+      <button type="submit">Registrarme</button>
+    </form>
+  </div>
+</div>
+
+  
 
   <main>
     <div class="card-container">
@@ -78,39 +136,25 @@
           </div>
         </ul>
       </section>
+    </div>
 
-      <!-- Nueva sección para predicciones -->
-<section class="card">
-  <h2><span class="icon"><img src="./assets/img/prediccion.png" alt="Predicciones" class="icon-img"></span> Mis Predicciones</h2>
-  <div id="predicciones-container" class="predicciones-grid">
-    <div class="prediccion-card">
-      <h3>Próximo Período</h3>
-      <p id="next-period">Cargando...</p>
+    <!-- Nueva Sección de Predicciones -->
+  <section id="predictions-section" class="card">
+    <h2><span class="icon"><img src="./assets/img/predicciones.png" alt="Predicciones" class="icon-img"></span> Predicciones de tu ciclo</h2>
+    <div id="predictions-container" class="predictions-grid">
+      <!-- Las tarjetas de predicciones se insertarán aquí dinámicamente -->
     </div>
-    <div class="prediccion-card">
-      <h3>Ovulación</h3>
-      <p id="ovulation-status">Cargando...</p>
+  </section>
+  
+  <!-- Nueva Sección de Insights y Recomendaciones -->
+  <section id="insights-section" class="card insights-card">
+    <h2><span class="icon"><img src="./assets/img/insights.png" alt="Insights" class="icon-img"></span> Insights y Recomendaciones</h2>
+    <div id="insights-content">
+      <!-- El contenido de insights se insertará aquí dinámicamente -->
     </div>
-    <div class="prediccion-card">
-      <h3>Probabilidad de Embarazo</h3>
-      <p id="pregnancy-chance">Cargando...</p>
-    </div>
-    <div class="prediccion-card">
-      <h3>Días antes del Período</h3>
-      <p id="days-before-period">Cargando...</p>
-    </div>
-    <div class="prediccion-card">
-      <h3>Fase Actual</h3>
-      <p id="current-phase">Cargando...</p>
-    </div>
-    <div class="prediccion-card">
-      <h3>Estadísticas</h3>
-      <p id="cycle-stats">Cargando...</p>
-    </div>
-  </div>
-</section>
+  </section>
 
-    </div>
+
   </main>
 
   <footer>
@@ -118,6 +162,7 @@
     <p class="app-version">por Salud a Mano</p>
   </footer>
 
-  <script src="./assets/js/app_3.js"></script>
+
+  <script src="./assets/js/app_6.js"></script>
 </body>
 </html>
