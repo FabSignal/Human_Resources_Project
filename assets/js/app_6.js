@@ -387,6 +387,199 @@ function showPredictions(data) {
   } = data;
 
   cont.innerHTML = `
+    <!-- Próximo Período -->
+    <div class="prediction-card">
+      <div class="prediction-header">
+        <div class="prediction-icon">
+          <img src="./assets/img/calendario.png" alt="Próximo período">
+        </div>
+        <h3 class="prediction-title">Próximo Período</h3>
+      </div>
+      <div class="prediction-content">
+        <div class="prediction-item">
+          <span class="prediction-label">Fecha estimada</span>
+          <div class="prediction-value">${proximoPeriodo.fecha}</div>
+        </div>
+        <div class="prediction-item">
+          <span class="prediction-label">Días restantes</span>
+          <div class="prediction-value">${proximoPeriodo.diasRestantes}</div>
+        </div>
+        <div class="prediction-message">${proximoPeriodo.mensaje}</div>
+      </div>
+    </div>
+    
+    <!-- Ovulación -->
+    <div class="prediction-card">
+      <div class="prediction-header">
+        <div class="prediction-icon">
+          <img src="./assets/img/ovulacion.png" alt="Ovulación">
+        </div>
+        <h3 class="prediction-title">Ovulación</h3>
+      </div>
+      <div class="prediction-content">
+        <div class="prediction-item">
+          <span class="prediction-label">Estado</span>
+          <div class="prediction-value">${ovulacion.estado}</div>
+        </div>
+        <div class="prediction-item">
+          <span class="prediction-label">Fecha estimada</span>
+          <div class="prediction-value">${ovulacion.fechaAmigable}</div>
+        </div>
+        <div class="prediction-item">
+          <span class="prediction-label">Ventana fértil</span>
+          <div class="prediction-value">${
+            ovulacion.ventanaFertil ? "Activa" : "Inactiva"
+          }</div>
+        </div>
+        <div class="prediction-message">${ovulacion.mensaje}</div>
+      </div>
+    </div>
+    
+    <!-- Fertilidad -->
+    <div class="prediction-card">
+      <div class="prediction-header">
+        <div class="prediction-icon">
+          <img src="./assets/img/fertilidad.png" alt="Fertilidad">
+        </div>
+        <h3 class="prediction-title">Fertilidad</h3>
+      </div>
+      <div class="prediction-content">
+        <div class="prediction-item">
+          <span class="prediction-label">Probabilidad</span>
+          <div class="prediction-value">${fertilidad.probabilidad}</div>
+        </div>
+        <div class="prediction-item">
+          <span class="prediction-label">Nivel</span>
+          <div class="prediction-value">${fertilidad.nivel}</div>
+        </div>
+        <div class="prediction-message">${fertilidad.mensaje}</div>
+      </div>
+    </div>
+    
+    <!-- Fase Actual -->
+    <div class="prediction-card">
+      <div class="prediction-header">
+        <div class="prediction-icon">
+          <img src="./assets/img/fase_actual.png" alt="Fase actual">
+        </div>
+        <h3 class="prediction-title">Fase Actual</h3>
+      </div>
+      <div class="prediction-content">
+        <div class="prediction-item">
+          <span class="prediction-label">Fase</span>
+          <div class="prediction-value">${faseActual.nombre}</div>
+        </div>
+        <div class="prediction-item">
+          <span class="prediction-label">Día del ciclo</span>
+          <div class="prediction-value">Día ${faseActual.diaDelCiclo} de ${
+    faseActual.duracionCiclo
+  }</div>
+        </div>
+        <div class="prediction-message">
+          Esta fase se caracteriza por cambios en tu energía y estado de ánimo. 
+          Escucha a tu cuerpo y date el cuidado que necesitas.
+        </div>
+      </div>
+    </div>
+    
+    <!-- Estadísticas del Ciclo -->
+    <div class="prediction-card">
+      <div class="prediction-header">
+        <div class="prediction-icon">
+          <img src="./assets/img/estadisticas.png" alt="Estadísticas">
+        </div>
+        <h3 class="prediction-title">Estadísticas</h3>
+      </div>
+      <div class="prediction-content">
+        <div class="prediction-item">
+          <span class="prediction-label">Duración promedio</span>
+          <div class="prediction-value">${
+            estadisticas.ciclo.duracionPromedio
+          } días</div>
+        </div>
+        <div class="prediction-item">
+          <span class="prediction-label">Regularidad</span>
+          <div class="prediction-value">${estadisticas.ciclo.regularidad}</div>
+        </div>
+        <div class="prediction-item">
+          <span class="prediction-label">Último período</span>
+          <div class="prediction-value">${
+            estadisticas.ciclo.ultimoPeriodo
+          }</div>
+        </div>
+        <div class="prediction-item">
+          <span class="prediction-label">Duración menstrual</span>
+          <div class="prediction-value">${
+            estadisticas.menstruacion.duracionPromedio
+          } días</div>
+        </div>
+        <div class="prediction-item">
+          <span class="prediction-label">Confiabilidad</span>
+          <div class="prediction-value">${
+            estadisticas.precision.confiabilidad
+          }</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Insights y recomendaciones
+  const insightsCont = document.getElementById("insights-content");
+  if (insightsCont) {
+    insightsCont.innerHTML = `
+      <div class="insight-card important">
+        <div class="insight-title">
+          <i class="fas fa-heart"></i>
+          <h3>Consejo del día</h3>
+        </div>
+        <div class="insight-content">
+          <p>${insights.consejo}</p>
+        </div>
+      </div>
+      
+      <div class="insight-card">
+        <div class="insight-title">
+          <i class="fas fa-brain"></i>
+          <h3>Estado emocional</h3>
+        </div>
+        <div class="insight-content">
+          <p>${insights.mensaje}</p>
+          <ul class="insight-list">
+            ${insights.sintomas.emocionales
+              .map((s) => `<li>${s}</li>`)
+              .join("")}
+          </ul>
+        </div>
+      </div>
+      
+      <div class="insight-card">
+        <div class="insight-title">
+          <i class="fas fa-body"></i>
+          <h3>Síntomas físicos</h3>
+        </div>
+        <div class="insight-content">
+          <ul class="insight-list">
+            ${insights.sintomas.fisicos.map((s) => `<li>${s}</li>`).join("")}
+          </ul>
+        </div>
+      </div>
+      
+      <div class="insight-card">
+        <div class="insight-title">
+          <i class="fas fa-lightbulb"></i>
+          <h3>Recomendaciones</h3>
+        </div>
+        <div class="insight-content">
+          <ul class="insight-list">
+            ${insights.sintomas.consejos.map((c) => `<li>${c}</li>`).join("")}
+          </ul>
+        </div>
+      </div>
+    `;
+  }
+}
+
+/* cont.innerHTML = `
     <h2>Predicciones</h2>
     
     <div class="prediction-block">
@@ -471,7 +664,7 @@ function showPredictions(data) {
       )}</p>
     </div>
   `;
-}
+} */
 /* =========================== DOM  ============================ */
 
 document.addEventListener("DOMContentLoaded", function () {
