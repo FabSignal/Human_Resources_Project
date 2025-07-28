@@ -92,7 +92,10 @@ async function loadCycles() {
     } else {
       // Si hay ciclos reales, se mapean y almacenan
       ciclos = serverCycles.map((c) => ({
-        ...c,
+        id: c.id,
+        fecha: c.startDate || c.fecha,
+        duracion: c.duration || c.duracion,
+        sintomas: c.symptoms || c.sintomas,
         synced: true,
         example: false,
       }));
