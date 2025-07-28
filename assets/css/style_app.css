@@ -1,6 +1,7 @@
 :root {
   /* Colores base */
-  --primary-dark: #000000;
+  /* --primary-dark: #000000; */
+  --primary-dark: #0a0414;
   --primary-medium: #222121;
   --primary-light: #ffffff;
   --secondary-dark: #373636;
@@ -17,7 +18,8 @@
   --accent-coral: #ff8e59;
   --accent-blue: #697bff;
   --accent-lightblue: #5e9bff;
-  --accent-lavender: #7c5295;
+  /* --accent-lavender: #7c5295; */
+  --accent-lavender: #321469;
   --accent-lilac: #8f9aff;
   --accent-mint: #d1e6d1;
   --accent-dark-mint: #d8e3b7;
@@ -197,7 +199,7 @@ h2:hover .icon {
 /* Formulario */
 .multi-step-form {
   position: relative;
-  height: 350px;
+  height: 420px;
   overflow: visible;
   border-radius: calc(var(--card-radius) - 1.5rem);
 }
@@ -205,7 +207,7 @@ h2:hover .icon {
 .form-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: calc(var(--card-radius) - 1.5rem);
-  padding: 2rem;
+  padding: 2.5rem;
   box-shadow: var(--shadow-soft);
   position: absolute;
   top: 0;
@@ -218,7 +220,7 @@ h2:hover .icon {
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
   border: 1px solid rgba(255, 255, 255, 0.9);
 }
 
@@ -248,7 +250,7 @@ label {
 input,
 textarea,
 select {
-  padding: 1.1rem 1.4rem;
+  padding: 1.2rem 1.6rem;
   border: 1px solid var(--neutral-medium);
   border-radius: var(--element-radius);
   font-size: 1rem;
@@ -300,8 +302,8 @@ textarea {
 /* Botones*/
 .btn-container {
   display: flex;
-  gap: 1.2rem;
-  margin-top: 1rem;
+  gap: 1.5rem;
+  margin-top: 1.3rem;
 }
 
 button {
@@ -1480,5 +1482,185 @@ button:disabled:hover::before {
 @media (max-width: 600px) {
   .cycle-status-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ======================Estilos para Scroll ============================= */
+/* Contenedor principal de la lista */
+.cycle-list-container {
+  max-height: 420px; /* Altura máxima antes del scroll */
+  overflow-y: auto; /* Habilitar scroll vertical */
+  padding-right: 8px; /* Espacio para la barra de scroll */
+  position: relative;
+}
+
+/* Personalización de la barra de scroll */
+.cycle-list-container::-webkit-scrollbar {
+  width: 4px; /* Ancho de la barra */
+}
+
+.cycle-list-container::-webkit-scrollbar-track {
+  background: rgba(240, 232, 224, 0.3);
+  border-radius: 2px;
+}
+
+.cycle-list-container::-webkit-scrollbar-thumb {
+  background: var(--accent-lavender);
+  border-radius: 4px;
+}
+
+.cycle-list-container::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-lilac); /* Color hover */
+}
+
+/* Para Firefox */
+.cycle-list-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-lavender) rgba(240, 232, 224, 0.1);
+}
+
+/* Gradiente superior */
+.cycle-list-container::before {
+  content: "";
+  position: sticky;
+  top: 0;
+  height: 20px;
+  background: linear-gradient(to bottom, var(--glass-bg) 0%, transparent 100%);
+  z-index: 10;
+}
+
+/* Gradiente inferior */
+.cycle-list-container::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  height: 20px;
+  background: linear-gradient(to top, var(--glass-bg) 0%, transparent 100%);
+  z-index: 10;
+}
+
+/* Ajustes para diferentes tamaños de pantalla */
+@media (max-width: 900px) {
+  .cycle-list-container {
+    max-height: 350px;
+  }
+}
+
+@media (max-width: 600px) {
+  .cycle-list-container {
+    max-height: 300px;
+  }
+}
+
+/* =======================Estilos para el mensaje de advertencia ============================*/
+.notice-msg {
+  display: flex;
+  flex-direction: column; /* Cambiado a columna */
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  background: rgba(255, 241, 246, 0.92);
+  border-radius: var(--card-radius);
+  border: 1px dashed var(--accent-pink);
+  text-align: center;
+  min-height: 180px; /* Reducir altura */
+  max-width: 100%;
+  box-shadow: 0 8px 24px rgba(124, 82, 149, 0.1);
+  position: relative;
+}
+
+/* Contenedor interno */
+.notice-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 800px;
+  width: 100%;
+  padding: 0 1rem; /* Añadir padding horizontal */
+}
+
+.notice-content .icon-img {
+  width: 60px; /* Reducir tamaño */
+  height: 60px;
+  margin-bottom: 1rem; /* Reducir espacio */
+}
+
+.notice-content h3 {
+  color: var(--accent-lavender);
+  font-size: 1.4rem; /* Tamaño reducido */
+  margin-bottom: 0.5rem; /* Reducir espacio */
+  line-height: 1.3;
+}
+
+.notice-content p {
+  color: var(--neutral-dark);
+  font-size: 1.1rem; /* Tamaño reducido */
+  line-height: 1.5;
+  margin-bottom: 1.2rem; /* Reducir espacio */
+  max-width: 90%; /* Limitar ancho de texto */
+}
+
+.btn-add-cycle {
+  background: var(--accent-lavender);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.8rem; /* Tamaño reducido */
+  border-radius: var(--element-radius);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(124, 82, 149, 0.2);
+}
+
+.btn-add-cycle:hover {
+  background: var(--accent-lilac);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(124, 82, 149, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .notice-msg {
+    padding: 1.5rem;
+    min-height: 160px;
+  }
+
+  .notice-content .icon-img {
+    width: 50px;
+    height: 50px;
+  }
+
+  .notice-content h3 {
+    font-size: 1.3rem;
+  }
+
+  .notice-content p {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .notice-msg {
+    padding: 1.2rem;
+    min-height: 150px;
+  }
+
+  .notice-content .icon-img {
+    width: 45px;
+    height: 45px;
+    margin-bottom: 0.8rem;
+  }
+
+  .notice-content h3 {
+    font-size: 1.2rem;
+  }
+
+  .btn-add-cycle {
+    padding: 0.7rem 1.5rem;
+    font-size: 1rem;
   }
 }

@@ -242,13 +242,13 @@ function showAuthenticatedState() {
 
   // Actualizar el saludo en el header
   const titulo = document.querySelector("header h1");
-  titulo.innerHTML = `<span class="icon"><img src="../assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola ${storedUserName}! ¿Cómo te sentís hoy?`;
+  titulo.innerHTML = `<span class="icon"><img src="../assets/img/luna_1.png" alt="Luna" class="icon-img"></span> ¡Hola ${storedUserName}! ¿Cómo te sentís hoy?`;
 }
 
 // Función para mostrar estado no autenticado
 function showUnauthenticatedState() {
   authModal.classList.add("active");
-  greetingText.innerHTML = `<span class="icon"><img src="../assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola! ¿Cómo te sentís hoy?`;
+  greetingText.innerHTML = `<span class="icon"><img src="../assets/img/luna_1.png" alt="Luna" class="icon-img"></span> ¡Hola! ¿Cómo te sentís hoy?`;
 }
 
 // ======================= MENÚ DE USUARIa =======================
