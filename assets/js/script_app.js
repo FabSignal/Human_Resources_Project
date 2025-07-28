@@ -554,7 +554,7 @@ async function syncPendingCycles() {
 // 5) Listener de reconexión
 window.addEventListener("online", syncPendingCycles);
 
-/* ====================   ========================
+/* ==================== Mostrar las predicciones  ========================
   Solo si hay al menos 2 ciclos reales */
 async function fetchPredictions() {
   // 1) Verificar prerrequisitos
@@ -562,7 +562,7 @@ async function fetchPredictions() {
   if (!userId) return;
 
   // Filtrar **solo** ciclos sincronizados y **no** de ejemplo
-  const reales = ciclos.filter((c) => c.synced === true && c.example === false);
+  const reales = ciclos.filter((c) => c.synced === true && !c.example);
   const realesCount = reales.length;
 
   const container = document.getElementById("predictions-stats-container");
@@ -1017,6 +1017,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       duracion,
       sintomas,
       synced: false, // marca como “pendiente” de enviar al servidor
+      example: false,
     };
 
     // Se agrega el nuevo ciclo al array
