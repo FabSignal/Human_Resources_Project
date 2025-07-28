@@ -989,7 +989,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 */
 
   // Envío del formulario
-  form.addEventListener("submit", function (e) {
+  form.addEventListener("submit", async function (e) {
     e.preventDefault(); // Evita que se recargue la página
 
     // Se obtienen los valores ingresados por la usuaria en el formulario
@@ -1025,16 +1025,23 @@ document.addEventListener("DOMContentLoaded", async function () {
     localStorage.setItem("ciclos", JSON.stringify(ciclos));
 
     // Intentar sincronizar inmediatamente los ciclos pendientes
-    syncPendingCycles();
+    //syncPendingCycles();
 
     // Se actualiza la lista de ciclos en pantalla
-    mostrarCiclos();
+    //mostrarCiclos();
 
     // Se actualiza ciclosPrecargados para avisar que ya no deben mostrarse solo los ciclos de prueba
-    ciclosPrecargados = false;
+    //ciclosPrecargados = false;
 
     // Se vuelve a mostrar la lista actualizada
+    //mostrarCiclos();
+
+    // Esperar a que ambos ciclos (1º y 2º) se suban al backend
+    await syncPendingCycles();
+    // Refrescar UI y estadísticas inmediatamente
+    ciclosPrecargados = false;
     mostrarCiclos();
+    fetchPredictions();
 
     // Se resetea el formulario y se vuelve al primer paso
     form.reset();

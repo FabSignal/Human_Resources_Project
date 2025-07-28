@@ -166,7 +166,7 @@ main {
   top: 0;
   left: 0;
   right: 0;
-  height: 6px;
+  height: 20px; /* Grosor de la línea superior de las tarjetas más grandes*/
   background: var(--gradient-header);
   border-radius: var(--card-radius) var(--card-radius) 0 0;
 }
@@ -380,7 +380,7 @@ button.next-btn:hover::after {
   border-radius: var(--card-radius);
   box-shadow: var(--shadow-soft);
   transition: var(--transition-smooth);
-  border-left: 5px solid var(--accent-lavender);
+  border-left: 1.5px solid var(--accent-lavender);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 1rem;
@@ -397,7 +397,7 @@ button.next-btn:hover::after {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 1.5px;
   background: linear-gradient(
     to right,
     var(--accent-lilac),
@@ -477,7 +477,7 @@ footer::before {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 1.5px;
   background: linear-gradient(
     to right,
     var(--accent-lilac),
@@ -985,80 +985,13 @@ button:disabled:hover::before {
 }
 
 /* ============ PREDICCIONES ============ */
-/* #predictions-section {
-  margin-top: 2.5rem;
-}
 
-.predictions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-}
-
-.prediction-card {
-  background: var(--glass-bg);
-  border-radius: var(--card-radius);
-  padding: 1.8rem;
-  box-shadow: var(--shadow-soft);
-  transition: var(--transition-smooth);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(4px);
-  position: relative;
-  overflow: hidden;
-  transform: translateY(0);
-}
-
-.prediction-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(
-    to right,
-    var(--accent-lilac),
-    var(--accent-lavender)
-  );
-  border-radius: var(--card-radius) var(--card-radius) 0 0;
-}
-
-.prediction-card:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-hover);
-}
-
-.prediction-card h3 {
-  color: var(--accent-lavender);
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.3rem;
-}
-
-.prediction-card p,
-.prediction-card ul {
-  margin: 0.5rem 0;
-  color: var(--neutral-dark);
-}
-
-.prediction-card ul {
-  padding-left: 1.2rem;
-}
- */
 /* ============ INSIGHTS ============ */
 .insights-card {
   margin-top: 2.5rem;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.95);
 }
-
-/* .insights-card::before {
-  background: linear-gradient(
-    to right,
-    var(--accent-mint),
-    var(--accent-dark-mint)
-  );
-} */
 
 #insights-content {
   padding: 1rem 0;
@@ -1183,23 +1116,6 @@ button:disabled:hover::before {
 }
 
 /* ============ MINITARJETAS DE ESTADO ============ */
-
-/* Consejo destacado */
-/* .featured-insight {
-  grid-column: span 2;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 241, 246, 0.8),
-    rgba(209, 230, 209, 0.6)
-  );
-  border-radius: var(--card-radius);
-  padding: 1.8rem;
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  position: relative;
-  overflow: hidden;
-} */
 
 .featured-insight h3 {
   color: var(--accent-lavender);
@@ -1349,12 +1265,6 @@ button:disabled:hover::before {
   border-left-color: var(--accent-pink);
   grid-column: span 1; /* Ocupa 1 columna */
 }
-
-/* Estadísticas con estilo diferente */
-/* .stats-card {
-  border-left-color: var(--accent-lavender);
-}
- */
 /* Responsive */
 @media (max-width: 900px) {
   .cycle-status-grid {
@@ -1376,8 +1286,6 @@ button:disabled:hover::before {
     font-size: 1.4rem;
   }
 }
-
-/* ==================????? */
 
 /* ============ ESTADO DEL CICLO - PREDICCIONES ============ */
 
@@ -1410,7 +1318,7 @@ button:disabled:hover::before {
   top: 0;
   left: 0;
   right: 0;
-  height: 5px;
+  height: 1.5px; /*  borde de la línea de las tarjetas de Estado de tu ciclos */
   background: linear-gradient(
     to right,
     var(--accent-lilac),
@@ -1497,7 +1405,7 @@ button:disabled:hover::before {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 1.5px;
   background: linear-gradient(
     to right,
     var(--accent-lilac),
