@@ -7,8 +7,15 @@ let ciclos = [];
 let ciclosPrecargados = false;
 
 // ESTADO DE AUTENTICACIÓN
-const userId = localStorage.getItem("userId");
-const userName = localStorage.getItem("userName");
+// const userId = localStorage.getItem("userId");
+function getCurrentUserId() {
+  return localStorage.getItem("userId");
+}
+
+//const userName = localStorage.getItem("userName");
+function getCurrentUserName() {
+  return localStorage.getItem("userName");
+}
 
 /*  ======================= VARIABLES GLOBALES PARA DOM ==================== */
 let cycleList;
@@ -43,7 +50,9 @@ function cargarCiclosDeEjemplo() {
 
 // Función que trae los ciclos del servidor, actualiza variables y localStorage
 async function loadCycles() {
-  // 0) Si no hay usuario logueado, cargo ejemplos y salgo
+  // 0) Leer el userId desde LocalStorage
+  const userId = getCurrentUserId();
+  // 1) Si no hay usuario logueado, cargo ejemplos y salgo
   if (!userId) {
     cargarCiclosDeEjemplo();
     return;
@@ -58,12 +67,24 @@ async function loadCycles() {
     );
     if (!resp.ok) throw new Error(`Error ${resp.status}`);
 
-    // 1. Parsear JSON
-    const data = await resp.json();
+    //  Parsear JSON
+    //const data = await resp.json();
 
     // 2. Asegurar que 'data' sea un array
     //    Si no lo es, convierte a vacío para no romper .map()
-    const serverCycles = Array.isArray(data) ? data : [];
+    //const serverCycles = Array.isArray(data) ? data : [];
+
+    // 1) Parsear JSON y normalizarlo
+    const payload = await resp.json();
+    let serverCycles;
+    if (Array.isArray(payload)) {
+      serverCycles = payload;
+    } else if (Array.isArray(payload.cycles)) {
+      serverCycles = payload.cycles;
+    } else {
+      console.warn("loadCycles: estructura inesperada", payload);
+      serverCycles = [];
+    }
 
     // 3. Si no hay ciclos guardados, se cargan ejemplos
     if (serverCycles.length === 0) {
@@ -182,49 +203,6 @@ function mostrarCiclos() {
   });
 }
 
-// 2) Si solo hay ejemplos (ningún ciclo “real”), mostramos igual el estado vacío
-/* const tieneCicloReal = ciclos.some((c) => c.example === false);
-  if (!tieneCicloReal) {
-    cycleList.appendChild(emptyTemplate.content.cloneNode(true));
-    return;
-  } */
-
-// 4) Renderizar la lista ordenada
-/* ordenarCiclosPorFechaDesc(ciclos).forEach((ciclo) => {
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <div>
-        <div class="cycle-date">${formatDate(ciclo.fecha)}</div>
-        <div class="cycle-symptoms">${
-          ciclo.sintomas || "Sin síntomas registrados"
-        }</div>
-      </div>
-      <div class="cycle-duration">${ciclo.duracion} días</div>
-    `;
-    cycleList.appendChild(li); */
-
-// Se ordena el array de ciclos por fecha usando la función ordenarCiclosPorFechaDesc y se guarda en ciclosOrdenados
-// const ciclosOrdenados = ordenarCiclosPorFechaDesc(ciclos);
-
-// Se recorre cada ciclo del array ordenado y cada uno se inserta como lista en el HTML
-/* ciclosOrdenados.forEach((ciclo) => {
-      const listItem = document.createElement("li"); */
-
-// Se le agrega contenido HTML con los datos del ciclo, incluyendo la fecha formateada
-/* listItem.innerHTML = `
-      <div>
-        <div class="cycle-date">${formatDate(ciclo.fecha)}</div>
-        <div class="cycle-symptoms">${
-          ciclo.sintomas || "Sin síntomas registrados"
-        }</div>
-      </div>
-      <div class="cycle-duration">${ciclo.duracion} días</div>
-    `; */
-// Se inserta la lista en el DOM
-// cycleList.appendChild(listItem);
-//});
-//}
-
 /* ======================= AUTENTICACIÓN ====================== */
 
 // Elementos del DOM
@@ -342,11 +320,10 @@ registerForm.addEventListener("submit", async (e) => {
       //ciclos = [];
       await loadCycles(); // recarga los ciclos del servidor
       mostrarCiclos(); // los dibuja en pantalla
-
+      fetchPredictions();
       // Ocultar modal y mostrar estado autenticado
       authModal.classList.remove("active");
       showAuthenticatedState();
-
       syncPendingCycles();
 
       // Mostrar notificación de éxito
@@ -417,7 +394,7 @@ loginForm.addEventListener("submit", async (e) => {
       //ciclos = [];
       await loadCycles(); // recarga los ciclos del servidor
       mostrarCiclos(); // los dibuja en pantalla
-
+      fetchPredictions();
       showAuthenticatedState();
       syncPendingCycles();
       showSuccessNotification("¡Bienvenida de nuevo!");
@@ -515,6 +492,8 @@ if (stored) {
 async function syncPendingCycles() {
   // 1) Salir si estamos offline
   if (!navigator.onLine) return;
+  const userId = getCurrentUserId();
+  if (!userId) return; // nada que sincronizar si no hay login
 
   // 2) Leer array desde LS
   const storedArr = JSON.parse(localStorage.getItem("ciclos") || "[]");
@@ -538,8 +517,15 @@ async function syncPendingCycles() {
         if (res.ok) {
           ciclo.synced = true;
           changed = true;
+        } else if (res.status === 400) {
+          // Ciclo duplicado: ya existe en servidor, lo marcamos como “synced”
+          console.warn(
+            `Ciclo ${ciclo.id} ya existe en API, lo marcamos como syncado.`
+          );
+          ciclo.synced = true;
+          changed = true;
         } else {
-          // Capturar body de error
+          // Otros errores los logueamos para investigar
           const errorText = await res.text();
           console.error(
             `Sync falló ciclo ${ciclo.id}: HTTP ${res.status}`,
@@ -569,46 +555,9 @@ window.addEventListener("online", syncPendingCycles);
   Solo si hay al menos 2 ciclos reales */
 async function fetchPredictions() {
   // 1) Verificar prerrequisitos
+  const userId = getCurrentUserId();
   if (!userId) return;
-  // Filtramos de LS o del array runtime
-  /* const reales = ciclos
-    .filter((c) => (c.synced === false ? false : true))
-    .filter((c) => !c.synced || c.synced) // esto incluye ejemplos y reales
-    .filter(
-      (c) =>
-        (c.synced === true && ciclosPrecargados === false) ||
-        (c.synced === false) === false
-    );
-  
-  const realesCount = ciclos.filter((c) => c.synced === true).length;
 
-  if (realesCount < 2) {
-    const cont = document.getElementById("predictions-stats-container");
-    if (cont) {
-      cont.innerHTML = `
-        <div class="notice-msg">
-          <img src="../assets/img/alerta.png" alt="Alerta" class="icon-img">
-          <h3>Tenés que cargar al menos dos ciclos consecutivos</h3>
-          <p>Registrá tus ciclos para poder ver tus estadísticas y predicciones</p>
-        </div>
-      `;
-    }
-    return;
-  }
-
-  try {
-    const res = await fetch(
-      `${API_BASE_URL}/api/cycles/predictions/${encodeURIComponent(userId)}`
-    );
-    if (!res.ok) {
-      throw new Error(`Status ${res.status}`);
-    }
-    const data = await res.json();
-    showPredictions(data);
-  } catch (err) {
-    console.error("Error al obtener predicciones:", err);
-  }
-} */
   // Filtrar **solo** ciclos sincronizados y **no** de ejemplo
   const reales = ciclos.filter((c) => c.synced === true && c.example === false);
   const realesCount = reales.length;
@@ -878,6 +827,9 @@ function showPredictions(data) {
 /* =========================== DOM  ============================ */
 
 document.addEventListener("DOMContentLoaded", async function () {
+  // Leer credenciales actuales
+  const userId = getCurrentUserId(); // función que ya definiste
+  const userName = localStorage.getItem("userName");
   // Elementos del DOM relacionados al formulario por pasos
   const form = document.getElementById("form-ciclo");
   const formCards = document.querySelectorAll(".form-card"); // Tarjetas del form
@@ -905,17 +857,6 @@ document.addEventListener("DOMContentLoaded", async function () {
       e.stopPropagation();
       userDropdown.hidden = !userDropdown.hidden;
     });
-
-    // Cerrar sesión
-    /* logoutBtn.addEventListener("click", () => {
-      localStorage.removeItem("userId");
-      localStorage.removeItem("userName");
-      userDropdown.hidden = true;
-      showUnauthenticatedState();
-      location.reload();
-      localStorage.removeItem("ciclos");
-      ciclos = [];
-    }); */
 
     // Cerrar sesión (nuevo)
     logoutBtn.addEventListener("click", () => {
@@ -1005,12 +946,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     form.appendChild(errorElement);
   }
 
-  // Se cargan los ciclos existentes al iniciar la página
-  //mostrarCiclos();
-
-  // Luego de mostrar la lista de ciclos, pedimos predicciones si hay suficientes datos
-  //fetchPredictions();
-
   let currentStep = 0; // Paso actual del formulario
 
   // Función para cambiar de tarjeta en el formulario por pasos
@@ -1094,11 +1029,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     // Se actualiza ciclosPrecargados para avisar que ya no deben mostrarse solo los ciclos de prueba
     ciclosPrecargados = false;
-
-    // Si la tarjeta de estado vacío está visible, se remueve
-    /* if (emptyState && cycleList.contains(emptyState)) {
-      cycleList.removeChild(emptyState);
-    } */
 
     // Se vuelve a mostrar la lista actualizada
     mostrarCiclos();
