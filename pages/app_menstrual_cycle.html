@@ -5,22 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>App Ciclo Menstrual</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="./assets/css/style.css">
+  <link rel="stylesheet" href="../assets/css/style_app.css">
 </head>
 <body>
   <header>
-    <h1><span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola  <span id="userName"></span>! ¿Cómo te sentís hoy?</h1>
+    <h1><span class="icon"><img src="../assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola  <span id="userName"></span>! ¿Cómo te sentís hoy?</h1>
     <p class="subtitle">Cuidarte empieza por conocerte. ¡Registrá tu ciclo!</p>
   </header>
-
- <!--  <header>
-    <div class="header-content">
-      <div>
-    <h1><span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola 'nombre'!¿Cómo te sentís hoy?</h1>
-    <p class="subtitle">Cuidarte empieza por conocerte. ¡Registrá tu ciclo!</p>
-    </div>
-  </div>
-</header> -->
 
 <div class="user-menu">
     <button class="user-icon"><i class="fas fa-user-circle"></i></button>
@@ -74,11 +65,11 @@
   <main>
     <div class="card-container">
       <section class="card">
-        <h2><span class="icon"><img src="./assets/img/nuevo_ciclo.png" alt="Nuevo ciclo" class="icon-img"></span> Nuevo ciclo</h2>
+        <h2><span class="icon"><img src="../assets/img/nuevo_ciclo.png" alt="Nuevo ciclo" class="icon-img"></span> Nuevo ciclo</h2>
         <form id="form-ciclo" class="multi-step-form">
           <div class="form-card active">
             <div class="form-group">
-              <label for="fecha"><img src="./assets/img/calendario.png" alt="Calendario" class="icon-img"> Fecha de inicio</label>
+              <label for="fecha"><img src="../assets/img/calendario.png" alt="Calendario" class="icon-img"> Fecha de inicio</label>
               <input type="date" id="fecha" required />
             </div>
             <div class="btn-container">
@@ -93,7 +84,7 @@
 
           <div class="form-card">
             <div class="form-group">
-              <label for="duracion"><img src="./assets/img/reloj.png" alt="Reloj" class="icon-img"> Duración del sangrado (días)</label>
+              <label for="duracion"><img src="../assets/img/reloj.png" alt="Reloj" class="icon-img"> Duración del sangrado (días)</label>
               <input type="number" id="duracion" min="1" max="15" required />
             </div>
             <div class="btn-container">
@@ -109,7 +100,7 @@
 
           <div class="form-card">
             <div class="form-group">
-              <label for="sintomas"><img src="./assets/img/sintomas.png" alt="Síntomas" class="icon-img"> Síntomas (opcional)</label>
+              <label for="sintomas"><img src="../assets/img/sintomas.png" alt="Síntomas" class="icon-img"> Síntomas (opcional)</label>
               <textarea id="sintomas" rows="3" placeholder="Describí cómo te sentiste..."></textarea>
             </div>
             <div class="btn-container">
@@ -126,36 +117,37 @@
       </section>
 
       <section class="card">
-        <h2><span class="icon"><img src="./assets/img/gota.png" alt="Ciclos registrados" class="icon-img"></i></span> Mis ciclos registrados</h2>
+        <h2><span class="icon"><img src="../assets/img/gota.png" alt="Ciclos registrados" class="icon-img"></i></span> Mis ciclos registrados</h2>
         <ul id="lista-ciclos">
-          <div class="empty-state">
-            <img src="./assets/img/agenda.png" alt="Registro" class="icon-img">
-            <h3>Aún no tenés ciclos registrados</h3>
-            <p>Así se verá tu historial personal.</p>
-            <p>¡Agregá tu primer ciclo para comenzar tu seguimiento!</p> 
-          </div>
+          <template id="template-empty-state">
+            <div class="empty-state">
+              <img src="../assets/img/agenda.png" alt="Registro" class="icon-img">
+              <h3>Aún no tenés ciclos registrados</h3>
+              <p>Así se verá tu historial personal.</p>
+              <p>¡Agregá tu primer ciclo para comenzar tu seguimiento!</p> 
+            </div>        
+          </template>
         </ul>
       </section>
     </div>
 
-    <!-- Sección de Predicciones -->
-<section id="predictions-section" class="card">
-  <h2><span class="icon"><img src="./assets/img/predicciones.png" alt="Predicciones" class="icon-img"></span> Predicciones de tu ciclo</h2>
+    <!-- Predicciones -->
+<section id="predictions-stats-section" class="card">
+  <h2><span class="icon"><img src="../assets/img/predicciones.png" alt="Predicciones" class="icon-img"></span> Estado de tu ciclo</h2>
   
-  <div id="predictions-container" class="predictions-grid">
-    <!-- Las tarjetas se generarán dinámicamente con JavaScript -->
+  <div id="predictions-stats-container" class="cycle-status-grid">
+    <!-- Las minitarjetas se generarán dinámicamente -->
   </div>
 </section>
 
-<!-- Sección de Insights y Recomendaciones -->
+<!-- Sección completa de insights -->
 <section id="insights-section" class="card insights-card">
-  <h2><span class="icon"><img src="./assets/img/insights.png" alt="Insights" class="icon-img"></span> Insights y Recomendaciones</h2>
+  <h2><span class="icon"><img src="../assets/img/insights.png" alt="Insights" class="icon-img"></span> Insights y recomendaciones</h2>
   
   <div id="insights-content" class="insights-grid">
-    <!-- El contenido se generará dinámicamente -->
+    <!-- Insights generados dinámicamente -->
   </div>
 </section>
-
 
   </main>
 
@@ -165,6 +157,6 @@
   </footer>
 
 
-  <script src="./assets/js/app_6.js"></script>
+  <script src="../assets/js/script_app.js"></script>
 </body>
 </html>

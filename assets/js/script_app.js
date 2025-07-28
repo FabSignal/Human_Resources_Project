@@ -2,12 +2,168 @@
 const API_BASE_URL = "https://menstrual-cycle-tracking-api.onrender.com";
 
 /* ======================= DECLARACIONES GLOBALES ====================== */
-let ciclosPrecargados = false;
+// ciclosPrecargados : true cuando muestra ejemplos y false cuando muestra ciclos reales
 let ciclos = [];
+let ciclosPrecargados = false;
 
 // ESTADO DE AUTENTICACIÓN
 const userId = localStorage.getItem("userId");
 const userName = localStorage.getItem("userName");
+
+/*  ======================= VARIABLES GLOBALES PARA DOM ==================== */
+let cycleList;
+let emptyState;
+
+/* ============================= FUNCIONES ======================== */
+
+// ==========================
+function cargarCiclosDeEjemplo() {
+  const ejemplos = [
+    {
+      id: "1",
+      fecha: "2025-01-01",
+      duracion: 5,
+      sintomas: "Dolor abdominal, Hinchazón, Fatiga",
+      synced: true,
+      example: true,
+    },
+    {
+      id: "2",
+      fecha: "2025-01-28",
+      duracion: 6,
+      sintomas: "Dolor de cabeza, Cólicos, Dolor de espalda",
+      synced: true,
+      example: true,
+    },
+  ];
+  ciclos = ejemplos;
+  ciclosPrecargados = true;
+  localStorage.setItem("ciclos", JSON.stringify(ciclos));
+}
+
+// Función que trae los ciclos del servidor, actualiza variables y localStorage
+async function loadCycles() {
+  // 0) Si no hay usuario logueado, cargo ejemplos y salgo
+  if (!userId) {
+    cargarCiclosDeEjemplo();
+    return;
+  }
+
+  try {
+    const resp = await fetch(
+      `${API_BASE_URL}/api/cycles/${encodeURIComponent(userId)}`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    if (!resp.ok) throw new Error(`Error ${resp.status}`);
+
+    // 1. Parsear JSON
+    const data = await resp.json();
+
+    // 2. Asegurar que 'data' sea un array
+    //    Si no lo es, convierte a vacío para no romper .map()
+    const serverCycles = Array.isArray(data) ? data : [];
+
+    // 3. Si no hay ciclos guardados, se cargan ejemplos
+    if (serverCycles.length === 0) {
+      cargarCiclosDeEjemplo();
+    } else {
+      // Si hay ciclos reales, se mapean y almacenan
+      ciclos = serverCycles.map((c) => ({
+        ...c,
+        synced: true,
+        example: false,
+      }));
+
+      // Guardar en localStorage
+      ciclosPrecargados = false;
+      localStorage.setItem("ciclos", JSON.stringify(ciclos));
+    }
+  } catch (err) {
+    console.error("loadCycles:", err);
+
+    // 4. Si no había nada en LocalStorage o error 404, mostrar ejemplos
+    if (!localStorage.getItem("ciclos")) {
+      cargarCiclosDeEjemplo();
+      ciclosPrecargados = true;
+    }
+  }
+}
+
+// ====================
+/* ========== Mostrar ciclos dinámicamente en el DOM ========== */
+/* 
+  - Se limpia la lista previa y se agregan los ciclos ordenados por fecha
+  - Se usa una función para formatear fechas en español
+  */
+
+// Función para mostrar los datos de los ciclos en pantalla
+function mostrarCiclos() {
+  // Se limpia el contenido anterior de la lista (por si ya hay ciclos)
+  //cycleList.querySelectorAll("li").forEach((li) => li.remove());
+  cycleList.innerHTML = "";
+
+  // Si no hay ciclos nuevos agregados por la usuaria (es decir, solo están los precargados)
+  // se muestra el estado vacío como indicación visual. Esto se controla con la variable ciclosPrecargados.
+  //if (ciclos.length === 0) {
+  // Clonar & mostrar el template de empty-state
+  /* emptyState.style.display = "";
+    return;
+  } */
+
+  if (ciclos.length === 0) {
+    // Clonar & mostrar el template de empty-state
+    cycleList.appendChild(emptyTemplate.content.cloneNode(true));
+    return;
+  }
+
+  // 3) ¿Hay al menos un ciclo real?
+  const tieneReal = ciclos.some((c) => !c.isExample);
+  // 4) Si NO hay real (sólo ejemplos), muestro empty-state;
+  //    si hay real, lo oculto.
+  emptyState.style.display = tieneReal ? "none" : "";
+
+  // Si NO hay reales (solo ejemplos), muestro también el empty-state
+  /* if (!tieneReal) {
+    cycleList.appendChild(emptyTemplate.content.cloneNode(true));
+  } */
+
+  // 4) Renderizar la lista ordenada
+  ordenarCiclosPorFechaDesc(ciclos).forEach((ciclo) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <div>
+        <div class="cycle-date">${formatDate(ciclo.fecha)}</div>
+        <div class="cycle-symptoms">${
+          ciclo.sintomas || "Sin síntomas registrados"
+        }</div>
+      </div>
+      <div class="cycle-duration">${ciclo.duracion} días</div>
+    `;
+    cycleList.appendChild(li);
+
+    // Se ordena el array de ciclos por fecha usando la función ordenarCiclosPorFechaDesc y se guarda en ciclosOrdenados
+    // const ciclosOrdenados = ordenarCiclosPorFechaDesc(ciclos);
+
+    // Se recorre cada ciclo del array ordenado y cada uno se inserta como lista en el HTML
+    /* ciclosOrdenados.forEach((ciclo) => {
+      const listItem = document.createElement("li"); */
+
+    // Se le agrega contenido HTML con los datos del ciclo, incluyendo la fecha formateada
+    /* listItem.innerHTML = `
+      <div>
+        <div class="cycle-date">${formatDate(ciclo.fecha)}</div>
+        <div class="cycle-symptoms">${
+          ciclo.sintomas || "Sin síntomas registrados"
+        }</div>
+      </div>
+      <div class="cycle-duration">${ciclo.duracion} días</div>
+    `; */
+    // Se inserta la lista en el DOM
+    // cycleList.appendChild(listItem);
+  });
+}
 
 /* ======================= AUTENTICACIÓN ====================== */
 
@@ -45,18 +201,19 @@ function showAuthenticatedState() {
 
   // Actualizar el saludo en el header
   const titulo = document.querySelector("header h1");
-  titulo.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola ${storedUserName}! ¿Cómo te sentís hoy?`;
+  titulo.innerHTML = `<span class="icon"><img src="../assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola ${storedUserName}! ¿Cómo te sentís hoy?`;
 }
 
 // Función para mostrar estado no autenticado
 function showUnauthenticatedState() {
   authModal.classList.add("active");
-  greetingText.innerHTML = `<span class="icon"><img src="./assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola! ¿Cómo te sentís hoy?`;
+  greetingText.innerHTML = `<span class="icon"><img src="../assets/img/luna.png" alt="Luna" class="icon-img"></span> ¡Hola! ¿Cómo te sentís hoy?`;
 }
 
 // ======================= MENÚ DE USUARIa =======================
 
 // Verificar si debemos limpiar los ciclos de ejemplo
+// QUE HACE ESTO???????
 /* if (userId && !ciclosPrecargados) {
   localStorage.removeItem("ciclos");
   ciclos = [];
@@ -113,13 +270,18 @@ registerForm.addEventListener("submit", async (e) => {
     }
 
     if (response.ok) {
-      // Guardar en localStorage
+      // 1. Guardar credenciales en localStorage
       localStorage.setItem("userId", data.userId);
       localStorage.setItem("userName", data.name);
 
-      // Eliminar ciclos de ejemplo
+      // Si hay login exitoso:
+      // 2. Resetear los ciclos locales
       localStorage.removeItem("ciclos");
-      ciclosPrecargados = false;
+
+      // 3. Cargar los ciclos reales y mostrarlos
+      //ciclos = [];
+      await loadCycles(); // recarga los ciclos del servidor
+      mostrarCiclos(); // los dibuja en pantalla
 
       // Ocultar modal y mostrar estado autenticado
       authModal.classList.remove("active");
@@ -189,6 +351,13 @@ loginForm.addEventListener("submit", async (e) => {
       // Guardar en localStorage
       localStorage.setItem("userId", data.userId);
       localStorage.setItem("userName", data.name);
+
+      // Al login exitoso:
+      localStorage.removeItem("ciclos");
+      //ciclos = [];
+      await loadCycles(); // recarga los ciclos del servidor
+      mostrarCiclos(); // los dibuja en pantalla
+
       showAuthenticatedState();
       syncPendingCycles();
       showSuccessNotification("¡Bienvenida de nuevo!");
@@ -332,7 +501,7 @@ async function syncPendingCycles() {
 // 5) Listener de reconexión
 window.addEventListener("online", syncPendingCycles);
 
-/* ====================GET /api/cycles/predictions/:userId ========================
+/* ====================   ========================
   Solo si hay al menos 2 ciclos reales */
 async function fetchPredictions() {
   // 1) Verificar prerrequisitos
@@ -349,10 +518,24 @@ async function fetchPredictions() {
   // Más sencillo: contar los ciclos reales subidos
   const realesCount = ciclos.filter((c) => c.synced === true).length;
 
-  if (realesCount < 2) {
+  /* if (realesCount < 2) {
     const cont = document.getElementById("predictions-container");
     if (cont) {
       cont.innerHTML = `<div class="notice-msg">Necesitás al menos dos ciclos registrados para obtener predicciones.</div>`;
+    }
+    return;
+  } */
+
+  if (realesCount < 2) {
+    const cont = document.getElementById("predictions-stats-container");
+    if (cont) {
+      cont.innerHTML = `
+        <div class="notice-msg">
+          <img src="../assets/img/alerta.png" alt="Alerta" class="icon-img">
+          <h3>Tenés que cargar al menos dos ciclos consecutivos</h3>
+          <p>Registrá tus ciclos para poder ver tus estadísticas y predicciones</p>
+        </div>
+      `;
     }
     return;
   }
@@ -373,10 +556,9 @@ async function fetchPredictions() {
 
 /*======================== RenderizaR la respuesta de predicciones dentro de #predictions ===========*/
 function showPredictions(data) {
-  const cont = document.getElementById("predictions-container");
-  if (!cont) return;
+  const container = document.getElementById("predictions-stats-container");
+  if (!container) return;
 
-  // Extraemos cada bloque de la respuesta
   const {
     proximoPeriodo,
     ovulacion,
@@ -386,151 +568,166 @@ function showPredictions(data) {
     insights,
   } = data;
 
-  cont.innerHTML = `
-    <!-- Próximo Período -->
-    <div class="prediction-card">
-      <div class="prediction-header">
-        <div class="prediction-icon">
-          <img src="./assets/img/calendario.png" alt="Próximo período">
+  // Función para formatear fechas
+  const formatDate = (dateString) => {
+    const options = { day: "numeric", month: "long" };
+    return new Date(dateString).toLocaleDateString("es-ES", options);
+  };
+
+  // Determinar qué mostrar
+  const showOvulation = ovulacion.diasHastaOvulacion > 0;
+  const validPhase =
+    faseActual.diaDelCiclo > 0 &&
+    faseActual.diaDelCiclo <= faseActual.duracionCiclo;
+
+  // Crear las 6 tarjetas
+  container.innerHTML = `
+    <!-- 1. Próximo período -->
+    <div class="status-card card-period">
+      <div class="status-header">
+        <div class="status-icon">
+          <img src="../assets/img/prob_prox_ciclo.png" alt="Próximo período">
         </div>
-        <h3 class="prediction-title">Próximo Período</h3>
+        <div class="status-title">Próximo período</div>
       </div>
-      <div class="prediction-content">
-        <div class="prediction-item">
-          <span class="prediction-label">Fecha estimada</span>
-          <div class="prediction-value">${proximoPeriodo.fecha}</div>
-        </div>
-        <div class="prediction-item">
-          <span class="prediction-label">Días restantes</span>
-          <div class="prediction-value">${proximoPeriodo.diasRestantes}</div>
-        </div>
-        <div class="prediction-message">${proximoPeriodo.mensaje}</div>
-      </div>
-    </div>
-    
-    <!-- Ovulación -->
-    <div class="prediction-card">
-      <div class="prediction-header">
-        <div class="prediction-icon">
-          <img src="./assets/img/ovulacion.png" alt="Ovulación">
-        </div>
-        <h3 class="prediction-title">Ovulación</h3>
-      </div>
-      <div class="prediction-content">
-        <div class="prediction-item">
-          <span class="prediction-label">Estado</span>
-          <div class="prediction-value">${ovulacion.estado}</div>
-        </div>
-        <div class="prediction-item">
-          <span class="prediction-label">Fecha estimada</span>
-          <div class="prediction-value">${ovulacion.fechaAmigable}</div>
-        </div>
-        <div class="prediction-item">
-          <span class="prediction-label">Ventana fértil</span>
-          <div class="prediction-value">${
-            ovulacion.ventanaFertil ? "Activa" : "Inactiva"
-          }</div>
-        </div>
-        <div class="prediction-message">${ovulacion.mensaje}</div>
+      <div class="status-content">
+        <div class="status-value">${
+          proximoPeriodo.diasRestantes === 0
+            ? "¡Hoy!"
+            : formatDate(proximoPeriodo.fecha)
+        }</div>
+        <div class="status-message">${
+          proximoPeriodo.diasRestantes === 0
+            ? "Tu período comienza hoy"
+            : `Comienza en ${proximoPeriodo.diasRestantes} días`
+        }</div>
       </div>
     </div>
     
-    <!-- Fertilidad -->
-    <div class="prediction-card">
-      <div class="prediction-header">
-        <div class="prediction-icon">
-          <img src="./assets/img/fertilidad.png" alt="Fertilidad">
+    <!-- 2. Fase actual -->
+    <div class="status-card card-phase">
+      <div class="status-header">
+        <div class="status-icon">
+          <img src="../assets/img/fase_actual.png" alt="Fase actual">
         </div>
-        <h3 class="prediction-title">Fertilidad</h3>
+        <div class="status-title">Fase actual</div>
       </div>
-      <div class="prediction-content">
-        <div class="prediction-item">
-          <span class="prediction-label">Probabilidad</span>
-          <div class="prediction-value">${fertilidad.probabilidad}</div>
-        </div>
-        <div class="prediction-item">
-          <span class="prediction-label">Nivel</span>
-          <div class="prediction-value">${fertilidad.nivel}</div>
-        </div>
-        <div class="prediction-message">${fertilidad.mensaje}</div>
+      <div class="status-content">
+        <div class="status-value">${faseActual.nombre}</div>
+        <div class="status-message">Día ${
+          faseActual.diaDelCiclo
+        } de tu ciclo</div>
       </div>
     </div>
     
-    <!-- Fase Actual -->
-    <div class="prediction-card">
-      <div class="prediction-header">
-        <div class="prediction-icon">
-          <img src="./assets/img/fase_actual.png" alt="Fase actual">
+      <!-- 3. Fertilidad -->
+<div class="status-card card-fertility">
+  <div class="status-header">
+    <div class="status-icon">
+      <img src="../assets/img/prob_fertilidad.png" alt="Fertilidad">
+    </div>
+    <div class="status-title">Fertilidad</div>
+  </div>
+  <div class="status-content">
+    <div class="status-value">
+      ${fertilidad.mensaje || "Estado actual de tu fertilidad"}
+    </div>
+    <p class="status-detail">
+      ${
+        ovulacion.ventanaFertil
+          ? "Estás en tu ventana fértil"
+          : "No estás en tu ventana fértil"
+      }
+    </p>
+  </div>
+</div>
+
+    
+    <!-- 4. Ovulación -->
+<div class="status-card card-ovulation">
+  <div class="status-header">
+    <div class="status-icon">
+      <img src="../assets/img/ovulacion.png" alt="Ovulación">
+    </div>
+    <div class="status-title">Ovulación</div>
+  </div>
+  <div class="status-content">
+    <div class="status-value">
+      ${ovulacion.mensaje || "Sin datos disponibles"}
+    </div>
+    <div class="status-message">
+      Fecha estimada: ${ovulacion.fechaAmigable || "—"}
+    </div>
+  </div>
+</div>
+
+
+    
+    <!-- 5. Duración promedio -->
+    <div class="status-card card-duration">
+      <div class="status-header">
+        <div class="status-icon">
+          <img src="../assets/img/reloj.png" alt="Duración promedio">
         </div>
-        <h3 class="prediction-title">Fase Actual</h3>
+        <div class="status-title">Duración promedio</div>
       </div>
-      <div class="prediction-content">
-        <div class="prediction-item">
-          <span class="prediction-label">Fase</span>
-          <div class="prediction-value">${faseActual.nombre}</div>
-        </div>
-        <div class="prediction-item">
-          <span class="prediction-label">Día del ciclo</span>
-          <div class="prediction-value">Día ${faseActual.diaDelCiclo} de ${
-    faseActual.duracionCiclo
-  }</div>
-        </div>
-        <div class="prediction-message">
-          Esta fase se caracteriza por cambios en tu energía y estado de ánimo. 
-          Escucha a tu cuerpo y date el cuidado que necesitas.
-        </div>
+      <div class="status-content">
+        <div class="status-value">${
+          estadisticas.ciclo.duracionPromedio
+        } días</div>
+        <div class="status-message">De tu ciclo menstrual</div>
       </div>
     </div>
     
-    <!-- Estadísticas del Ciclo -->
-    <div class="prediction-card">
-      <div class="prediction-header">
-        <div class="prediction-icon">
-          <img src="./assets/img/estadisticas.png" alt="Estadísticas">
+    <!-- 6. Último período -->
+    <div class="status-card card-last-period">
+      <div class="status-header">
+        <div class="status-icon">
+          <img src="../assets/img/ultimo_periodo.png" alt="Último período">
         </div>
-        <h3 class="prediction-title">Estadísticas</h3>
+        <div class="status-title">Último período</div>
       </div>
-      <div class="prediction-content">
-        <div class="prediction-item">
-          <span class="prediction-label">Duración promedio</span>
-          <div class="prediction-value">${
-            estadisticas.ciclo.duracionPromedio
-          } días</div>
-        </div>
-        <div class="prediction-item">
-          <span class="prediction-label">Regularidad</span>
-          <div class="prediction-value">${estadisticas.ciclo.regularidad}</div>
-        </div>
-        <div class="prediction-item">
-          <span class="prediction-label">Último período</span>
-          <div class="prediction-value">${
-            estadisticas.ciclo.ultimoPeriodo
-          }</div>
-        </div>
-        <div class="prediction-item">
-          <span class="prediction-label">Duración menstrual</span>
-          <div class="prediction-value">${
-            estadisticas.menstruacion.duracionPromedio
-          } días</div>
-        </div>
-        <div class="prediction-item">
-          <span class="prediction-label">Confiabilidad</span>
-          <div class="prediction-value">${
-            estadisticas.precision.confiabilidad
-          }</div>
-        </div>
+      <div class="status-content">
+        <div class="status-value">${formatDate(
+          estadisticas.ciclo.ultimoPeriodo
+        )}</div>
       </div>
     </div>
   `;
 
-  // Insights y recomendaciones
+  function getFertilityMessage(level, fallbackMsg) {
+    const map = {
+      low: "baja",
+      moderate: "moderada",
+      high: "alta",
+    };
+
+    const mappedLevel = map[level.toLowerCase()];
+    const messages = {
+      baja: "Baja probabilidad de embarazo",
+      moderada: "Posibilidades moderadas de embarazo",
+      alta: "Alta probabilidad de embarazo",
+    };
+
+    return (
+      fallbackMsg || messages[mappedLevel] || "Estado de fertilidad actual"
+    );
+  }
+
+  /* function getOvulationMessage(days) {
+    if (days === 0) return "¡Podrías estar ovulando hoy!";
+    if (days === 1) return "¡Mañana es tu día más fértil!";
+    return `Tu ventana fértil ${days <= 5 ? "se acerca" : "está próxima"}`;
+  } */
+
+  // Insights completos
   const insightsCont = document.getElementById("insights-content");
   if (insightsCont) {
     insightsCont.innerHTML = `
       <div class="insight-card important">
         <div class="insight-title">
-          <i class="fas fa-heart"></i>
-          <h3>Consejo del día</h3>
+          <img src="../assets/img/corazon_lavender.png" alt="Síntomas físicos" class="icon-img">
+          <h3>Consejo de bienestar</h3>
         </div>
         <div class="insight-content">
           <p>${insights.consejo}</p>
@@ -539,12 +736,12 @@ function showPredictions(data) {
       
       <div class="insight-card">
         <div class="insight-title">
-          <i class="fas fa-brain"></i>
-          <h3>Estado emocional</h3>
+          <img src="../assets/img/fugaz.png" alt="Síntomas físicos" class="icon-img">
+          <h3>Tu estado emocional</h3>
         </div>
         <div class="insight-content">
           <p>${insights.mensaje}</p>
-          <ul class="insight-list">
+          <ul>
             ${insights.sintomas.emocionales
               .map((s) => `<li>${s}</li>`)
               .join("")}
@@ -554,11 +751,11 @@ function showPredictions(data) {
       
       <div class="insight-card">
         <div class="insight-title">
-          <i class="fas fa-body"></i>
-          <h3>Síntomas físicos</h3>
+          <img src="../assets/img/sintomas_fisicos.png" alt="Síntomas físicos" class="icon-img">
+          <h3>Síntomas físicos que podés experimentar</h3>
         </div>
         <div class="insight-content">
-          <ul class="insight-list">
+          <ul>
             ${insights.sintomas.fisicos.map((s) => `<li>${s}</li>`).join("")}
           </ul>
         </div>
@@ -566,11 +763,11 @@ function showPredictions(data) {
       
       <div class="insight-card">
         <div class="insight-title">
-          <i class="fas fa-lightbulb"></i>
-          <h3>Recomendaciones</h3>
+          <img src="../assets/img/recomendaciones.png" alt="Recomendaciones" class="icon-img">
+          <h3>Estas recomendaciones pueden ayudarte</h3>
         </div>
         <div class="insight-content">
-          <ul class="insight-list">
+          <ul>
             ${insights.sintomas.consejos.map((c) => `<li>${c}</li>`).join("")}
           </ul>
         </div>
@@ -581,15 +778,21 @@ function showPredictions(data) {
 
 /* =========================== DOM  ============================ */
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
   // Elementos del DOM relacionados al formulario por pasos
   const form = document.getElementById("form-ciclo");
   const formCards = document.querySelectorAll(".form-card"); // Tarjetas del form
   const nextButtons = document.querySelectorAll(".next-btn"); // Botones siguiente
   const prevButtons = document.querySelectorAll(".prev-btn"); // Botones Anterior
   const indicatorDots = document.querySelectorAll(".indicator-dot"); // Puntos para pasar de tarjeta
-  const cycleList = document.getElementById("lista-ciclos"); // Lista donde se muestran los ciclos
-  const emptyState = document.querySelector(".empty-state"); // Tarjeta que indica que no se han ingresado ciclos ( de estado vacío)
+  cycleList = document.getElementById("lista-ciclos"); // Lista donde se muestran los ciclos
+  //emptyState = document.querySelector(".empty-state"); // Tarjeta que indica que no se han ingresado ciclos ( de estado vacío)
+  const emptyTemplate = document.getElementById("template-empty-state");
+
+  await loadCycles(); // Lee del servidor o LocalStorage
+  mostrarCiclos(); // Muestra la lista
+  syncPendingCycles(); // Envía pendientes a la  API
+  fetchPredictions(); // Obtiene estadísticas
 
   // —— MENÚ DE USUARIO (TODO este bloque) ——
   const userMenu = document.querySelector(".user-menu");
@@ -605,11 +808,37 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Cerrar sesión
-    logoutBtn.addEventListener("click", () => {
+    /* logoutBtn.addEventListener("click", () => {
       localStorage.removeItem("userId");
       localStorage.removeItem("userName");
       userDropdown.hidden = true;
       showUnauthenticatedState();
+      location.reload();
+      localStorage.removeItem("ciclos");
+      ciclos = [];
+    }); */
+
+    // Cerrar sesión (nuevo)
+    logoutBtn.addEventListener("click", () => {
+      // 1) Limpiar credenciales y datos de usuario
+      localStorage.removeItem("userId");
+      localStorage.removeItem("userName");
+      localStorage.removeItem("ciclos");
+
+      // 2) Ocultar menú desplegable
+      userDropdown.hidden = true;
+      userMenu.style.display = "none";
+
+      // 3) Mostrar modal de login/registro
+      authModal.classList.add("active");
+
+      // 4) Resetear saludo al estado genérico
+      greetingText.innerHTML = `
+       <span class="icon">
+         <img src="../assets/img/luna.png" alt="Luna" class="icon-img">
+       </span>
+       ¡Hola! ¿Cómo te sentís hoy?
+     `;
     });
 
     // Ocultar menú al hacer clic fuera
@@ -649,10 +878,18 @@ document.addEventListener("DOMContentLoaded", function () {
   // Al cargar la página
   if (userId && userName) {
     showAuthenticatedState();
+    // Si la usuaria ya está logueada, se cargan sus ciclos reales o de ejemplo
+    await loadCycles();
+    // Se muestra la lista de ciclos y se piden predicciones
+    mostrarCiclos();
+    fetchPredictions();
   } else {
     showUnauthenticatedState();
     // Eliminar nombre anterior si existe
     localStorage.removeItem("nombre");
+    // En no‐login también se cargan ejemplos
+    await loadCycles();
+    mostrarCiclos();
   }
 
   // Función para mostrar errores
@@ -670,10 +907,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Se cargan los ciclos existentes al iniciar la página
-  mostrarCiclos();
+  //mostrarCiclos();
 
   // Luego de mostrar la lista de ciclos, pedimos predicciones si hay suficientes datos
-  fetchPredictions();
+  //fetchPredictions();
 
   let currentStep = 0; // Paso actual del formulario
 
@@ -731,9 +968,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Se eliminan los ciclos de muestra al agregar el primer ciclo real
     if (ciclosPrecargados) {
-      ciclos = []; // Se eliminan todos los ciclos actuales (los de ejemplo)
-      ciclosPrecargados = false; // Evita que esto vuelva a ejecutarse
       localStorage.removeItem("ciclos");
+      ciclosPrecargados = false; // Evita que esto vuelva a ejecutarse
+      ciclos = []; // Se eliminan todos los ciclos actuales (los de ejemplo)
     }
 
     // Se crea un nuevo objeto con los nuevos datos ingresados del ciclo
@@ -760,9 +997,9 @@ document.addEventListener("DOMContentLoaded", function () {
     ciclosPrecargados = false;
 
     // Si la tarjeta de estado vacío está visible, se remueve
-    if (emptyState && cycleList.contains(emptyState)) {
+    /* if (emptyState && cycleList.contains(emptyState)) {
       cycleList.removeChild(emptyState);
-    }
+    } */
 
     // Se vuelve a mostrar la lista actualizada
     mostrarCiclos();
@@ -780,44 +1017,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return [...array].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   }
 
-  /* ========== Mostrar ciclos dinámicamente en el DOM ========== */
-  /* 
-  - Se limpia la lista previa y se agregan los ciclos ordenados por fecha
-  - Se usa una función para formatear fechas en español
-  */
-
-  // Función para mostrar los datos de los ciclos en pantalla
-  function mostrarCiclos() {
-    // Se limpia el contenido anterior de la lista (por si ya hay ciclos)
-    cycleList.innerHTML = "";
-
-    // Si no hay ciclos nuevos agregados por la usuaria (es decir, solo están los precargados)
-    // se muestra el estado vacío como indicación visual. Esto se controla con la variable ciclosPrecargados.
-    if (ciclos.length === 0 || ciclosPrecargados) {
-      cycleList.appendChild(emptyState.cloneNode(true));
-    }
-
-    // Se ordena el array de ciclos por fecha usando la función ordenarCiclosPorFechaDesc y se guarda en ciclosOrdenados
-    const ciclosOrdenados = ordenarCiclosPorFechaDesc(ciclos);
-
-    // Se recorre cada ciclo del array ordenado y cada uno se inserta como lista en el HTML
-    ciclosOrdenados.forEach((ciclo) => {
-      const listItem = document.createElement("li");
-
-      // Se le agrega contenido HTML con los datos del ciclo, incluyendo la fecha formateada
-      listItem.innerHTML = `
-      <div>
-        <div class="cycle-date">${formatDate(ciclo.fecha)}</div>
-        <div class="cycle-symptoms">${
-          ciclo.sintomas || "Sin síntomas registrados"
-        }</div>
-      </div>
-      <div class="cycle-duration">${ciclo.duracion} días</div>
-    `;
-      // Se inserta la lista en el DOM
-      cycleList.appendChild(listItem);
-    });
-  }
+  // ======================================================== aQUI ESTABA MOSTRAR CICLOS!!!
 
   // Función para mostrar fechas en español
   function formatDate(dateString) {
