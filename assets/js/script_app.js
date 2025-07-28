@@ -12,7 +12,7 @@ const userName = localStorage.getItem("userName");
 
 /*  ======================= VARIABLES GLOBALES PARA DOM ==================== */
 let cycleList;
-let emptyState;
+let emptyTemplate;
 
 /* ============================= FUNCIONES ======================== */
 
@@ -112,22 +112,35 @@ function mostrarCiclos() {
     return;
   } */
 
-  if (ciclos.length === 0) {
-    // Clonar & mostrar el template de empty-state
-    cycleList.appendChild(emptyTemplate.content.cloneNode(true));
-    return;
-  }
+  //if (ciclos.length === 0) {
+  // Clonar & mostrar el template de empty-state
+  //  cycleList.appendChild(emptyTemplate.content.cloneNode(true));
+  //return;
+  //}
 
   // 3) ¿Hay al menos un ciclo real?
-  const tieneReal = ciclos.some((c) => !c.isExample);
+  //const tieneReal = ciclos.some((c) => !c.isExample);
   // 4) Si NO hay real (sólo ejemplos), muestro empty-state;
   //    si hay real, lo oculto.
-  emptyState.style.display = tieneReal ? "none" : "";
+  //emptyState.style.display = tieneReal ? "none" : "";
 
   // Si NO hay reales (solo ejemplos), muestro también el empty-state
   /* if (!tieneReal) {
     cycleList.appendChild(emptyTemplate.content.cloneNode(true));
   } */
+
+  // 1) Si no hay ciclos (ni ejemplos), mostramos el estado vacío
+  if (ciclos.length === 0) {
+    cycleList.appendChild(emptyTemplate.content.cloneNode(true));
+    return;
+  }
+
+  // 2) Si solo hay ejemplos (ningún ciclo “real”), mostramos igual el estado vacío
+  const tieneCicloReal = ciclos.some((c) => c.example === false);
+  if (!tieneCicloReal) {
+    cycleList.appendChild(emptyTemplate.content.cloneNode(true));
+    return;
+  }
 
   // 4) Renderizar la lista ordenada
   ordenarCiclosPorFechaDesc(ciclos).forEach((ciclo) => {
@@ -787,7 +800,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   const indicatorDots = document.querySelectorAll(".indicator-dot"); // Puntos para pasar de tarjeta
   cycleList = document.getElementById("lista-ciclos"); // Lista donde se muestran los ciclos
   //emptyState = document.querySelector(".empty-state"); // Tarjeta que indica que no se han ingresado ciclos ( de estado vacío)
-  const emptyTemplate = document.getElementById("template-empty-state");
+  emptyTemplate = document.getElementById("template-empty-state");
 
   await loadCycles(); // Lee del servidor o LocalStorage
   mostrarCiclos(); // Muestra la lista
