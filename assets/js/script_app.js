@@ -571,7 +571,7 @@ async function fetchPredictions() {
   // 1) Verificar prerrequisitos
   if (!userId) return;
   // Filtramos de LS o del array runtime
-  const reales = ciclos
+  /* const reales = ciclos
     .filter((c) => (c.synced === false ? false : true))
     .filter((c) => !c.synced || c.synced) // esto incluye ejemplos y reales
     .filter(
@@ -579,16 +579,8 @@ async function fetchPredictions() {
         (c.synced === true && ciclosPrecargados === false) ||
         (c.synced === false) === false
     );
-  // Más sencillo: contar los ciclos reales subidos
+  
   const realesCount = ciclos.filter((c) => c.synced === true).length;
-
-  /* if (realesCount < 2) {
-    const cont = document.getElementById("predictions-container");
-    if (cont) {
-      cont.innerHTML = `<div class="notice-msg">Necesitás al menos dos ciclos registrados para obtener predicciones.</div>`;
-    }
-    return;
-  } */
 
   if (realesCount < 2) {
     const cont = document.getElementById("predictions-stats-container");
@@ -615,6 +607,49 @@ async function fetchPredictions() {
     showPredictions(data);
   } catch (err) {
     console.error("Error al obtener predicciones:", err);
+  }
+} */
+  // Filtrar **solo** ciclos sincronizados y **no** de ejemplo
+  const reales = ciclos.filter((c) => c.synced === true && c.example === false);
+  const realesCount = reales.length;
+
+  const container = document.getElementById("predictions-stats-container");
+
+  if (realesCount < 2) {
+    if (container) {
+      container.innerHTML = `
+        <div class="notice-msg">
+          <img src="../assets/img/alerta.png" alt="Alerta" class="icon-img">
+          <h3>Tenés que cargar al menos dos ciclos consecutivos</h3>
+          <p>Registrá tus ciclos para poder ver tus estadísticas y predicciones</p>
+        </div>
+      `;
+    }
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/api/cycles/predictions/${encodeURIComponent(userId)}`
+    );
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+
+    const data = await res.json();
+
+    // **Guard**: sólo mostrar si el objeto contiene la clave ovulacion
+    if (!data.ovulacion) {
+      console.warn("Predicciones incompletas:", data);
+      if (container)
+        container.innerHTML = `<p class="notice-msg">No se pudieron obtener predicciones.</p>`;
+      return;
+    }
+
+    showPredictions(data);
+  } catch (err) {
+    console.error("Error al obtener predicciones:", err);
+    if (container) {
+      container.innerHTML = `<p class="notice-msg">Error al cargar predicciones.</p>`;
+    }
   }
 }
 
