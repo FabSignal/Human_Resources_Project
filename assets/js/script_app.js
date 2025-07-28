@@ -91,6 +91,17 @@ async function loadCycles() {
   }
 }
 
+// Función para ordenar ciclos por fecha (más reciente primero)
+function ordenarCiclosPorFechaDesc(array) {
+  return [...array].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+}
+
+// Función para mostrar fechas en español
+function formatDate(dateString) {
+  const options = { year: "numeric", month: "long", day: "numeric" };
+  return new Date(dateString).toLocaleDateString("es-ES", options);
+}
+
 // ====================
 /* ========== Mostrar ciclos dinámicamente en el DOM ========== */
 /* 
@@ -100,7 +111,7 @@ async function loadCycles() {
 
 // Función para mostrar los datos de los ciclos en pantalla
 function mostrarCiclos() {
-  // Se limpia el contenido anterior de la lista (por si ya hay ciclos)
+  // 1. Se limpia el contenido anterior de la lista (por si ya hay ciclos)
   //cycleList.querySelectorAll("li").forEach((li) => li.remove());
   cycleList.innerHTML = "";
 
@@ -129,20 +140,33 @@ function mostrarCiclos() {
     cycleList.appendChild(emptyTemplate.content.cloneNode(true));
   } */
 
-  // 1) Si no hay ciclos (ni ejemplos), mostramos el estado vacío
+  // 2. Si no hay ciclos (ni ejemplos), mostramos el estado vacío
+  if (ciclosPrecargados) {
+    cycleList.appendChild(emptyTemplate.content.cloneNode(true));
+    // Luego listar cada ejemplo
+    ordenarCiclosPorFechaDesc(ciclos).forEach((ciclo) => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <div>
+          <div class="cycle-date">${formatDate(ciclo.fecha)}</div>
+          <div class="cycle-symptoms">${
+            ciclo.sintomas || "Sin síntomas registrados"
+          }</div>
+        </div>
+        <div class="cycle-duration">${ciclo.duracion} días</div>
+      `;
+      cycleList.appendChild(li);
+    });
+
+    return;
+  }
+  // 3) Si NO hay ciclos reales tras precargados=false
   if (ciclos.length === 0) {
     cycleList.appendChild(emptyTemplate.content.cloneNode(true));
     return;
   }
 
-  // 2) Si solo hay ejemplos (ningún ciclo “real”), mostramos igual el estado vacío
-  const tieneCicloReal = ciclos.some((c) => c.example === false);
-  if (!tieneCicloReal) {
-    cycleList.appendChild(emptyTemplate.content.cloneNode(true));
-    return;
-  }
-
-  // 4) Renderizar la lista ordenada
+  // 4) Al menos un ciclo real: render común
   ordenarCiclosPorFechaDesc(ciclos).forEach((ciclo) => {
     const li = document.createElement("li");
     li.innerHTML = `
@@ -155,16 +179,39 @@ function mostrarCiclos() {
       <div class="cycle-duration">${ciclo.duracion} días</div>
     `;
     cycleList.appendChild(li);
+  });
+}
 
-    // Se ordena el array de ciclos por fecha usando la función ordenarCiclosPorFechaDesc y se guarda en ciclosOrdenados
-    // const ciclosOrdenados = ordenarCiclosPorFechaDesc(ciclos);
+// 2) Si solo hay ejemplos (ningún ciclo “real”), mostramos igual el estado vacío
+/* const tieneCicloReal = ciclos.some((c) => c.example === false);
+  if (!tieneCicloReal) {
+    cycleList.appendChild(emptyTemplate.content.cloneNode(true));
+    return;
+  } */
 
-    // Se recorre cada ciclo del array ordenado y cada uno se inserta como lista en el HTML
-    /* ciclosOrdenados.forEach((ciclo) => {
+// 4) Renderizar la lista ordenada
+/* ordenarCiclosPorFechaDesc(ciclos).forEach((ciclo) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <div>
+        <div class="cycle-date">${formatDate(ciclo.fecha)}</div>
+        <div class="cycle-symptoms">${
+          ciclo.sintomas || "Sin síntomas registrados"
+        }</div>
+      </div>
+      <div class="cycle-duration">${ciclo.duracion} días</div>
+    `;
+    cycleList.appendChild(li); */
+
+// Se ordena el array de ciclos por fecha usando la función ordenarCiclosPorFechaDesc y se guarda en ciclosOrdenados
+// const ciclosOrdenados = ordenarCiclosPorFechaDesc(ciclos);
+
+// Se recorre cada ciclo del array ordenado y cada uno se inserta como lista en el HTML
+/* ciclosOrdenados.forEach((ciclo) => {
       const listItem = document.createElement("li"); */
 
-    // Se le agrega contenido HTML con los datos del ciclo, incluyendo la fecha formateada
-    /* listItem.innerHTML = `
+// Se le agrega contenido HTML con los datos del ciclo, incluyendo la fecha formateada
+/* listItem.innerHTML = `
       <div>
         <div class="cycle-date">${formatDate(ciclo.fecha)}</div>
         <div class="cycle-symptoms">${
@@ -173,10 +220,10 @@ function mostrarCiclos() {
       </div>
       <div class="cycle-duration">${ciclo.duracion} días</div>
     `; */
-    // Se inserta la lista en el DOM
-    // cycleList.appendChild(listItem);
-  });
-}
+// Se inserta la lista en el DOM
+// cycleList.appendChild(listItem);
+//});
+//}
 
 /* ======================= AUTENTICACIÓN ====================== */
 
@@ -436,8 +483,11 @@ const stored = localStorage.getItem("ciclos");
 if (stored) {
   // 1) Ya hay ciclos guardados, cargarlos (tanto reales como ejemplos previos)
   ciclos = JSON.parse(stored);
+  // Si *todos* los ciclos tienen example=true,
+  //     se sigue en modo “precargados”
+  ciclosPrecargados = ciclos.every((c) => c.example === true);
 } else {
-  // 2) No hay nada en LS: inyectar solo ejemplos marcados como "syncados"
+  //  No hay nada en LS: inyectar solo ejemplos marcados como "syncados"
   ciclos = [
     {
       id: 1,
@@ -445,6 +495,7 @@ if (stored) {
       duracion: 5,
       sintomas: "Dolor abdominal, Hinchazón, Fatiga",
       synced: true, // así nunca se envían al servidor
+      example: true,
     },
     {
       id: 2,
@@ -452,10 +503,10 @@ if (stored) {
       duracion: 6,
       sintomas: "Dolor de cabeza, Cólicos, Dolor de espalda",
       synced: true,
+      example: true,
     },
   ];
   ciclosPrecargados = true;
-
   // Guardar ejemplos en LS para poder mostrarlos, pero ya vienen "synced"
   localStorage.setItem("ciclos", JSON.stringify(ciclos));
 }
@@ -1024,19 +1075,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     // Se muestra animación de éxito de carga de datos
     showSuccessAnimation();
   });
-
-  // Función para ordenar ciclos por fecha (más reciente primero)
-  function ordenarCiclosPorFechaDesc(array) {
-    return [...array].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-  }
-
-  // ======================================================== aQUI ESTABA MOSTRAR CICLOS!!!
-
-  // Función para mostrar fechas en español
-  function formatDate(dateString) {
-    const options = { year: "numeric", month: "long", day: "numeric" };
-    return new Date(dateString).toLocaleDateString("es-ES", options);
-  }
 
   /* ========== Mostrar notificación animada al guardar un ciclo ========== */
   /* 
